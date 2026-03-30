@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search, PackageSearch } from "lucide-react";
 import CountdownTimer from "@/components/CountdownTimer";
 import Skeleton from "@/components/Skeleton";
+import { supabase } from "@/lib/supabase";
 
 const CATEGORIES = [
   "All",
@@ -32,26 +33,29 @@ type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 interface Listing {
   id: string;
   title: string;
-  gradient: string;
+  images: string[];
   currentBid: number;
   startingBid: number;
-  endsAt: number;
+  endsAt: string;
   category: string;
-  status: "active";
-  isHot: boolean;
+  status: string;
 }
 
 function ListingCard({ listing }: { listing: Listing }) {
+  const imageUrl = listing.images?.[0];
+
   return (
     <Link
       href={`/listings/${listing.id}`}
       className="block rounded-2xl bg-white shadow-sm overflow-hidden transition-shadow hover:shadow-md"
     >
-      <div className={`relative aspect-[4/3] bg-gradient-to-br ${listing.gradient}`}>
-        {listing.isHot && (
-          <span className="absolute top-2 left-2 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
-            Hot
-          </span>
+      <div className="relative aspect-[4/3] bg-gray-100">
+        {imageUrl ? (
+          <img src={imageUrl} alt={listing.title} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500">
+            <span className="text-2xl font-bold text-white/60">{listing.title[0]}</span>
+          </div>
         )}
       </div>
       <div className="p-3 space-y-1.5">
@@ -88,12 +92,40 @@ export default function ListingsPage() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // TODO: Fetch real listings from API/Supabase
-    const timer = setTimeout(() => {
-      setListings([]);
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(timer);
+    async function fetchListings() {
+      try {
+        console.log("[Listings] Fetching listings from Supabase...");
+        const { data, error } = await supabase
+          .from("listings")
+          .select("*")
+          .eq("status", "active")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("[Listings] Fetch error:", error);
+          setListings([]);
+        } else {
+          console.log("[Listings] Fetched", data?.length ?? 0, "listings");
+          const mapped: Listing[] = (data || []).map((row) => ({
+            id: row.id,
+            title: row.title,
+            images: row.images || [],
+            currentBid: row.current_bid || row.starting_bid,
+            startingBid: row.starting_bid,
+            endsAt: row.ends_at,
+            category: row.category,
+            status: row.status,
+          }));
+          setListings(mapped);
+        }
+      } catch (err) {
+        console.error("[Listings] Unexpected error:", err);
+        setListings([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchListings();
   }, []);
 
   const filtered = useMemo(() => {
@@ -112,7 +144,9 @@ export default function ListingsPage() {
         items = [...items].sort((a, b) => b.currentBid - a.currentBid);
         break;
       case "ending-soon":
-        items = [...items].sort((a, b) => a.endsAt - b.endsAt);
+        items = [...items].sort(
+          (a, b) => new Date(a.endsAt).getTime() - new Date(b.endsAt).getTime()
+        );
         break;
       default:
         break;
