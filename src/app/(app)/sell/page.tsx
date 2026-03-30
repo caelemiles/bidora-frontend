@@ -100,7 +100,7 @@ export default function SellPage() {
 
       // Look up the Supabase user ID from firebase_uid
       const { data: userData, error: userError } = await supabase
-        .from("users")
+        .from("profiles")
         .select("id")
         .eq("firebase_uid", user.uid)
         .single();

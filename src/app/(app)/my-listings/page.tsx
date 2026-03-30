@@ -96,7 +96,7 @@ export default function MyListingsPage() {
 
         // Look up Supabase user ID
         const { data: userData, error: userError } = await supabase
-          .from("users")
+          .from("profiles")
           .select("id")
           .eq("firebase_uid", user.uid)
           .single();
