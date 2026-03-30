@@ -55,10 +55,10 @@ export default function ChatsPage() {
   ];
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto lg:max-w-4xl">
       {/* Header */}
-      <div className="px-4 pt-5 pb-3">
-        <h1 className="text-xl font-bold tracking-tight">Chats</h1>
+      <div className="px-4 pt-5 pb-3 lg:px-8 lg:pt-8">
+        <h1 className="text-xl font-bold tracking-tight lg:text-2xl">Chats</h1>
       </div>
 
       {/* Search */}

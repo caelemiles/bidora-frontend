@@ -168,9 +168,9 @@ export default function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <div className="flex flex-1 flex-col items-center px-4 py-8">
+      <div className="flex flex-1 flex-col items-center px-4 py-8 lg:py-16">
         {/* Progress bar */}
-        <div className="mb-6 w-full max-w-md">
+        <div className="mb-6 w-full max-w-md lg:max-w-lg">
           <div className="mb-2 flex items-center justify-between text-sm font-medium text-gray-500">
             <span>Step {step} of {TOTAL_STEPS}</span>
           </div>
@@ -184,7 +184,7 @@ export default function OnboardingPage() {
 
         {/* Card */}
         <div
-          className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-sm transition-all duration-200 ${transitionClass}`}
+          className={`w-full max-w-md lg:max-w-lg rounded-2xl bg-white p-6 lg:p-8 shadow-sm transition-all duration-200 ${transitionClass}`}
         >
           {step === 1 && (
             <StepProfile

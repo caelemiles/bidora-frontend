@@ -156,12 +156,12 @@ export default function ListingsPage() {
   }, [listings, search, category, sort]);
 
   return (
-    <div className="px-4 pt-5 max-w-6xl mx-auto">
+    <div className="px-4 pt-5 max-w-6xl mx-auto lg:px-8 lg:pt-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 lg:mb-6">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Marketplace</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Browse all active listings</p>
+          <h1 className="text-xl font-bold tracking-tight lg:text-2xl">Marketplace</h1>
+          <p className="text-xs text-gray-400 mt-0.5 lg:text-sm">Browse all active listings</p>
         </div>
         <button
           type="button"
@@ -224,7 +224,7 @@ export default function ListingsPage() {
 
       {/* Listings grid */}
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 lg:gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <SkeletonCard key={i} />
           ))}
@@ -246,7 +246,7 @@ export default function ListingsPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 lg:gap-4">
           {filtered.map((listing) => (
             <ListingCard key={listing.id} listing={listing} />
           ))}

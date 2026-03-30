@@ -207,7 +207,7 @@ export default function SellPage() {
   }
 
   return (
-    <div className="px-4 pt-4 max-w-2xl mx-auto">
+    <div className="px-4 pt-4 max-w-2xl mx-auto lg:max-w-3xl lg:px-8 lg:pt-8">
       {/* Toast */}
       {showToast && (
         <div className="fixed top-4 left-1/2 z-50 -translate-x-1/2 flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg">
@@ -217,7 +217,7 @@ export default function SellPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center gap-3 mb-5 lg:mb-8">
         <Link
           href="/listings"
           className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
