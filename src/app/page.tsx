@@ -1,7 +1,35 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import AdBanner from "@/components/AdBanner";
+import { Download } from "lucide-react";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
 
 export default function WelcomePage() {
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    function handleBeforeInstall(e: Event) {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    }
+    window.addEventListener("beforeinstallprompt", handleBeforeInstall);
+    return () =>
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+  }, []);
+
+  async function handleInstall() {
+    if (!deferredPrompt) return;
+    await deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+  }
+
   return (
     <div className="flex flex-1 flex-col items-center justify-between bg-white px-6 py-12 font-sans">
       {/* Top spacer */}
@@ -39,12 +67,23 @@ export default function WelcomePage() {
             Log In
           </Link>
         </div>
+
+        {/* PWA Install Prompt */}
+        {deferredPrompt && (
+          <button
+            type="button"
+            onClick={handleInstall}
+            className="mt-2 flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-600 transition-colors hover:bg-indigo-100 active:scale-[0.98]"
+          >
+            <Download size={16} />
+            Install Bidora App
+          </button>
+        )}
       </div>
 
       {/* Footer */}
       <div className="flex w-full max-w-xs flex-col items-center gap-4">
-        <p className="text-xs font-medium text-gray-400">V0.1</p>
-        <AdBanner />
+        <p className="text-xs font-medium text-gray-300">v0.2</p>
       </div>
     </div>
   );

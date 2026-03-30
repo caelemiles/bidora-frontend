@@ -8,9 +8,9 @@ export default function TermsPage() {
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
         <Link
-          href="/profile"
+          href="/settings"
           className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-          aria-label="Back to profile"
+          aria-label="Back to settings"
         >
           <ArrowLeft size={20} className="text-gray-700" />
         </Link>

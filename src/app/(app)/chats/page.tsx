@@ -1,78 +1,94 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import AdBanner from "@/components/AdBanner";
+import { MessageCircle, Search, Inbox } from "lucide-react";
 
-const MOCK_CHATS = [
-  {
-    id: "1",
-    type: "inquiry" as const,
-    listingTitle: "Vintage Mechanical Keyboard",
-    listingImage: null,
-    otherUser: "RetroTech",
-    lastMessage: "Is this still available?",
-    timestamp: "2m ago",
-    unread: true,
-  },
-  {
-    id: "2",
-    type: "inquiry" as const,
-    listingTitle: "Limited Edition Sneakers",
-    listingImage: null,
-    otherUser: "SneakerHead",
-    lastMessage: "Can you do a meetup at Orchard?",
-    timestamp: "1h ago",
-    unread: false,
-  },
-  {
-    id: "3",
-    type: "transaction" as const,
-    listingTitle: "Antique Desk Lamp",
-    listingImage: null,
-    otherUser: "VintageFinder",
-    lastMessage: "Great! Let's meet at the MRT station",
-    timestamp: "3h ago",
-    unread: true,
-  },
-  {
-    id: "4",
-    type: "transaction" as const,
-    listingTitle: "Rare Comic Book Collection",
-    listingImage: null,
-    otherUser: "ComicFan42",
-    lastMessage: "Payment sent via PayNow",
-    timestamp: "1d ago",
-    unread: false,
-  },
-];
+type ChatType = "inquiries" | "deals";
+type ChatStatus = "active" | "archived" | "expired";
 
-type Tab = "inquiry" | "transaction";
+function EmptyState({ type, status }: { type: ChatType; status: ChatStatus }) {
+  const labels: Record<ChatStatus, string> = {
+    active: "No active chats",
+    archived: "No archived chats",
+    expired: "No expired chats",
+  };
+
+  const descriptions: Record<ChatStatus, string> = {
+    active:
+      type === "inquiries"
+        ? "When you send or receive an inquiry about a listing, it will appear here."
+        : "When you win an auction and start a deal, it will appear here.",
+    archived: "Chats you archive will be saved here for your records.",
+    expired: "Deleted chats will appear here temporarily.",
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+      <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+        {status === "active" ? (
+          <MessageCircle size={24} className="text-gray-300" />
+        ) : (
+          <Inbox size={24} className="text-gray-300" />
+        )}
+      </div>
+      <p className="text-gray-500 font-medium text-sm">{labels[status]}</p>
+      <p className="text-gray-400 text-xs mt-1 max-w-[240px]">
+        {descriptions[status]}
+      </p>
+    </div>
+  );
+}
 
 export default function ChatsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("inquiry");
+  const [activeType, setActiveType] = useState<ChatType>("inquiries");
+  const [activeStatus, setActiveStatus] = useState<ChatStatus>("active");
 
-  const filteredChats = MOCK_CHATS.filter((chat) => chat.type === activeTab);
+  const typeButtons: { key: ChatType; label: string }[] = [
+    { key: "inquiries", label: "Inquiries" },
+    { key: "deals", label: "Deals" },
+  ];
+
+  const statusButtons: { key: ChatStatus; label: string }[] = [
+    { key: "active", label: "Active" },
+    { key: "archived", label: "Archived" },
+    { key: "expired", label: "Expired" },
+  ];
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="px-4 pt-4 pb-2">
-        <h1 className="text-xl font-bold">Chats</h1>
+      {/* Header */}
+      <div className="px-4 pt-5 pb-3">
+        <h1 className="text-xl font-bold tracking-tight">Chats</h1>
       </div>
 
-      {/* Tabs */}
+      {/* Search */}
+      <div className="px-4 mb-3">
+        <div className="relative">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+          />
+          <input
+            type="text"
+            placeholder="Search chats..."
+            className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none transition-shadow focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+          />
+        </div>
+      </div>
+
+      {/* Type Tabs */}
       <div className="flex border-b border-gray-200">
-        {([
-          { key: "inquiry", label: "Inquiries" },
-          { key: "transaction", label: "Transactions" },
-        ] as const).map((tab) => (
+        {typeButtons.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => {
+              setActiveType(tab.key);
+              setActiveStatus("active");
+            }}
             className={`flex-1 py-3 text-sm font-medium text-center transition-colors ${
-              activeTab === tab.key
+              activeType === tab.key
                 ? "text-indigo-600 border-b-2 border-indigo-600"
-                : "text-gray-500"
+                : "text-gray-400 hover:text-gray-600"
             }`}
           >
             {tab.label}
@@ -80,48 +96,25 @@ export default function ChatsPage() {
         ))}
       </div>
 
-      {/* Chat list */}
-      <div>
-        {filteredChats.length === 0 ? (
-          <div className="py-16 text-center text-sm text-gray-400">
-            No chats yet
-          </div>
-        ) : (
-          filteredChats.map((chat) => (
-            <Link
-              key={chat.id}
-              href={`/chats/${chat.id}`}
-              className="flex items-center gap-3 py-3 px-4 border-b border-gray-100 active:bg-gray-50 transition-colors"
-            >
-              {/* Listing image placeholder */}
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-500 shrink-0" />
-
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm line-clamp-1">
-                  {chat.listingTitle}
-                </p>
-                <p className="text-xs text-gray-400">{chat.otherUser}</p>
-                <p className="text-sm text-gray-500 line-clamp-1">
-                  {chat.lastMessage}
-                </p>
-              </div>
-
-              {/* Timestamp & unread */}
-              <div className="flex flex-col items-end gap-1 shrink-0">
-                <span className="text-xs text-gray-400">{chat.timestamp}</span>
-                {chat.unread && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
-                )}
-              </div>
-            </Link>
-          ))
-        )}
+      {/* Status Chips */}
+      <div className="flex gap-2 px-4 py-3">
+        {statusButtons.map((btn) => (
+          <button
+            key={btn.key}
+            onClick={() => setActiveStatus(btn.key)}
+            className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+              activeStatus === btn.key
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+            }`}
+          >
+            {btn.label}
+          </button>
+        ))}
       </div>
 
-      <div className="px-4 py-4">
-        <AdBanner />
-      </div>
+      {/* Chat list — empty since all mock data is removed */}
+      <EmptyState type={activeType} status={activeStatus} />
     </div>
   );
 }
