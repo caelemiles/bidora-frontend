@@ -27,38 +27,38 @@ export default function WelcomePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-between bg-white px-6 py-12 font-sans lg:justify-center lg:gap-12">
-      {/* Top spacer (mobile only) */}
-      <div className="lg:hidden" />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 py-12 font-sans">
+      {/* Desktop: constrained centered panel */}
+      <div className="flex w-full max-w-sm flex-col items-center gap-10 lg:max-w-lg lg:gap-14">
+        {/* Hero */}
+        <div className="flex flex-col items-center gap-4 text-center lg:gap-6">
+          {/* Logo */}
+          <div className="flex items-center gap-3 lg:gap-4">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary)] text-2xl font-extrabold text-white shadow-lg lg:h-[72px] lg:w-[72px] lg:rounded-3xl lg:text-4xl lg:shadow-xl">
+              B
+            </span>
+            <span className="text-4xl font-extrabold tracking-tight text-gray-900 lg:text-[3.25rem]">
+              Bidora
+            </span>
+          </div>
 
-      {/* Hero */}
-      <div className="flex flex-col items-center gap-6 text-center lg:gap-8">
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--primary)] text-2xl font-extrabold text-white shadow-lg lg:h-16 lg:w-16 lg:text-3xl">
-            B
-          </span>
-          <span className="text-4xl font-extrabold tracking-tight text-gray-900 lg:text-5xl">
-            Bidora
-          </span>
+          {/* Tagline */}
+          <p className="text-lg font-medium text-gray-500 lg:text-xl">
+            Buy. Sell. Bid. Win.
+          </p>
         </div>
 
-        {/* Tagline */}
-        <p className="text-lg font-medium text-gray-500 lg:text-xl">
-          Buy. Sell. Bid. Win.
-        </p>
-
         {/* CTA Buttons */}
-        <div className="mt-4 flex w-full max-w-xs flex-col gap-3 lg:max-w-sm lg:flex-row lg:gap-4">
+        <div className="flex w-full flex-col gap-3 lg:flex-row lg:gap-4">
           <Link
             href="/signup"
-            className="flex h-12 items-center justify-center rounded-xl bg-[var(--primary)] text-base font-semibold text-white shadow-md transition-opacity hover:opacity-90 active:scale-[0.98]"
+            className="flex h-14 w-full items-center justify-center rounded-2xl bg-[var(--primary)] px-8 text-base font-semibold leading-none text-white shadow-md transition-opacity hover:opacity-90 active:scale-[0.98] lg:h-[60px] lg:text-lg"
           >
             Get Started
           </Link>
           <Link
             href="/login"
-            className="flex h-12 items-center justify-center rounded-xl border-2 border-[var(--primary)] text-base font-semibold text-[var(--primary)] transition-colors hover:bg-[var(--primary-light)] active:scale-[0.98]"
+            className="flex h-14 w-full items-center justify-center rounded-2xl border-2 border-[var(--primary)] px-8 text-base font-semibold leading-none text-[var(--primary)] transition-colors hover:bg-[var(--primary-light)] active:scale-[0.98] lg:h-[60px] lg:text-lg"
           >
             Log In
           </Link>
@@ -69,16 +69,14 @@ export default function WelcomePage() {
           <button
             type="button"
             onClick={handleInstall}
-            className="mt-2 flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-600 transition-colors hover:bg-indigo-100 active:scale-[0.98]"
+            className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-6 py-3 text-sm font-semibold text-indigo-600 transition-colors hover:bg-indigo-100 active:scale-[0.98]"
           >
             <Download size={16} />
             Install Bidora App
           </button>
         )}
-      </div>
 
-      {/* Footer */}
-      <div className="flex w-full max-w-xs flex-col items-center gap-4">
+        {/* Footer */}
         <p className="text-xs font-medium text-gray-300">v0.2</p>
       </div>
     </div>

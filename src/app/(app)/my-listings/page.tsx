@@ -141,7 +141,7 @@ export default function MyListingsPage() {
   const filtered = listings.filter((l) => l.status === activeTab);
 
   return (
-    <div className="px-4 pt-5 max-w-2xl mx-auto lg:max-w-4xl lg:px-8 lg:pt-8">
+    <div className="px-4 pt-5 max-w-2xl mx-auto lg:max-w-4xl lg:px-10 lg:pt-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 lg:mb-6">
         <div>

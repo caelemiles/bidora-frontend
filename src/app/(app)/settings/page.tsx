@@ -84,7 +84,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="px-4 pt-6 pb-6 max-w-2xl mx-auto lg:max-w-3xl lg:px-8 lg:pt-10">
+    <div className="px-4 pt-6 pb-6 max-w-2xl mx-auto lg:max-w-3xl lg:px-10 lg:pt-12">
       {/* Header */}
       <div className="flex flex-col items-center mb-8 lg:mb-10">
         <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center mb-3 shadow-sm">

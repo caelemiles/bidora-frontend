@@ -156,7 +156,7 @@ export default function ListingsPage() {
   }, [listings, search, category, sort]);
 
   return (
-    <div className="px-4 pt-5 max-w-6xl mx-auto lg:px-8 lg:pt-8">
+    <div className="px-4 pt-5 max-w-7xl mx-auto lg:px-10 lg:pt-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 lg:mb-6">
         <div>
