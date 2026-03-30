@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { User } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { auth } from "@/lib/firebase";
 
 const TOTAL_STEPS = 6;
@@ -80,12 +80,24 @@ export default function OnboardingPage() {
     setSubmitting(true);
 
     try {
+      // Pre-flight: check Supabase configuration
+      if (!isSupabaseConfigured) {
+        const msg =
+          "Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.";
+        console.error("[Onboarding] " + msg);
+        setError(msg);
+        setSubmitting(false);
+        return;
+      }
+
       const user = auth.currentUser;
       if (!user) {
+        console.error("[Onboarding] No Firebase user logged in.");
         setError("You must be logged in to complete onboarding.");
         setSubmitting(false);
         return;
       }
+      console.log("[Onboarding] Firebase user:", user.uid, user.email);
 
       let avatarUrl = "";
 
@@ -93,15 +105,29 @@ export default function OnboardingPage() {
       if (formData.avatarFile) {
         const fileExt = formData.avatarFile.name.split(".").pop();
         const filePath = `avatars/${user.uid}.${fileExt}`;
+        const bucket = "listing-images";
 
-        console.log("[Onboarding] Uploading avatar:", filePath);
-        const { error: uploadError } = await supabase.storage
-          .from("listing-images")
-          .upload(filePath, formData.avatarFile, { upsert: true });
+        console.log("[Onboarding] Uploading avatar...");
+        console.log("[Onboarding]   Bucket:", bucket);
+        console.log("[Onboarding]   Path:", filePath);
+        console.log("[Onboarding]   File size:", formData.avatarFile.size, "bytes");
+        console.log("[Onboarding]   File type:", formData.avatarFile.type);
 
-        if (uploadError) {
-          console.error("[Onboarding] Avatar upload error:", uploadError);
-          setError(`Avatar upload failed: ${uploadError.message}`);
+        try {
+          const { error: uploadError } = await supabase.storage
+            .from(bucket)
+            .upload(filePath, formData.avatarFile, { upsert: true });
+
+          if (uploadError) {
+            console.error("[Onboarding] Avatar upload error:", JSON.stringify(uploadError, null, 2));
+            setError(`Avatar upload failed: ${uploadError.message}`);
+            setSubmitting(false);
+            return;
+          }
+        } catch (uploadErr) {
+          console.error("[Onboarding] Avatar upload network error:", uploadErr);
+          const detail = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
+          setError(`Avatar upload failed (network error): ${detail}. Check that Supabase is configured and the storage bucket "${bucket}" exists.`);
           setSubmitting(false);
           return;
         }
@@ -110,7 +136,7 @@ export default function OnboardingPage() {
           .from("listing-images")
           .getPublicUrl(filePath);
         avatarUrl = urlData.publicUrl;
-        console.log("[Onboarding] Avatar URL:", avatarUrl);
+        console.log("[Onboarding] Avatar uploaded. Public URL:", avatarUrl);
       }
 
       // Save profile to Supabase
@@ -126,24 +152,34 @@ export default function OnboardingPage() {
         category_interests: formData.categories,
       };
 
-      console.log("[Onboarding] Saving profile:", profileData);
+      console.log("[Onboarding] Saving profile to Supabase 'users' table...");
+      console.log("[Onboarding]   Payload:", JSON.stringify(profileData, null, 2));
 
-      const { error: insertError } = await supabase
-        .from("users")
-        .upsert(profileData, { onConflict: "firebase_uid" });
+      try {
+        const { error: insertError } = await supabase
+          .from("users")
+          .upsert(profileData, { onConflict: "firebase_uid" });
 
-      if (insertError) {
-        console.error("[Onboarding] Profile save error:", insertError);
-        setError(`Failed to save profile: ${insertError.message}`);
+        if (insertError) {
+          console.error("[Onboarding] Profile save error:", JSON.stringify(insertError, null, 2));
+          setError(`Failed to save profile: ${insertError.message} (code: ${insertError.code || "unknown"})`);
+          setSubmitting(false);
+          return;
+        }
+      } catch (saveErr) {
+        console.error("[Onboarding] Profile save network error:", saveErr);
+        const detail = saveErr instanceof Error ? saveErr.message : String(saveErr);
+        setError(`Failed to save profile (network error): ${detail}. Check that Supabase is configured and the "users" table exists.`);
         setSubmitting(false);
         return;
       }
 
-      console.log("[Onboarding] Profile saved successfully!");
+      console.log("[Onboarding] Profile saved successfully! Redirecting to /listings...");
       router.push("/listings");
     } catch (err) {
       console.error("[Onboarding] Unexpected error:", err);
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      setError(`Unexpected error: ${detail}`);
       setSubmitting(false);
     }
   }
@@ -168,9 +204,9 @@ export default function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <div className="flex flex-1 flex-col items-center px-4 py-8 lg:py-16">
+      <div className="flex flex-1 flex-col items-center px-4 py-8 lg:px-8 lg:py-16">
         {/* Progress bar */}
-        <div className="mb-6 w-full max-w-md lg:max-w-lg">
+        <div className="mb-6 w-full max-w-md lg:mb-8 lg:max-w-xl">
           <div className="mb-2 flex items-center justify-between text-sm font-medium text-gray-500">
             <span>Step {step} of {TOTAL_STEPS}</span>
           </div>
@@ -184,7 +220,7 @@ export default function OnboardingPage() {
 
         {/* Card */}
         <div
-          className={`w-full max-w-md lg:max-w-lg rounded-2xl bg-white p-6 lg:p-8 shadow-sm transition-all duration-200 ${transitionClass}`}
+          className={`w-full max-w-md lg:max-w-xl rounded-2xl bg-white p-6 lg:p-10 shadow-sm transition-all duration-200 ${transitionClass}`}
         >
           {step === 1 && (
             <StepProfile
@@ -235,12 +271,12 @@ export default function OnboardingPage() {
           )}
 
           {/* Buttons */}
-          <div className="mt-6 flex items-center justify-between gap-3">
+          <div className="mt-6 flex items-center justify-between gap-3 lg:mt-8">
             {step > 1 ? (
               <button
                 type="button"
                 onClick={handleBack}
-                className="flex h-11 items-center justify-center rounded-xl border-2 border-gray-300 px-5 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50 active:scale-[0.98]"
+                className="flex h-11 items-center justify-center rounded-xl border-2 border-gray-300 px-5 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50 active:scale-[0.98] lg:h-12 lg:px-7 lg:text-base"
               >
                 Back
               </button>
@@ -252,7 +288,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={handleNext}
-                className="flex h-11 items-center justify-center rounded-xl bg-[var(--primary)] px-6 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 active:scale-[0.98]"
+                className="flex h-11 items-center justify-center rounded-xl bg-[var(--primary)] px-6 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 active:scale-[0.98] lg:h-12 lg:px-8 lg:text-base"
               >
                 Next
               </button>
@@ -261,14 +297,14 @@ export default function OnboardingPage() {
                 type="button"
                 onClick={handleFinish}
                 disabled={submitting}
-                className="flex h-11 items-center justify-center rounded-xl bg-[var(--success)] px-6 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                className="flex h-11 items-center justify-center rounded-xl bg-[var(--success)] px-6 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 active:scale-[0.98] disabled:opacity-50 lg:h-12 lg:px-8 lg:text-base"
               >
                 {submitting ? "Saving…" : "Finish"}
               </button>
             )}
           </div>
 
-          {/* Submission error */}
+          {/* Submission error — visible on any step */}
           {error && step === TOTAL_STEPS && (
             <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-[var(--danger)]">
               {error}
@@ -319,7 +355,7 @@ function StepProfile({
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-xl font-bold text-gray-900">Set up your profile</h2>
+      <h2 className="text-xl font-bold text-gray-900 lg:text-2xl">Set up your profile</h2>
 
       {/* Avatar — tap to pick image */}
       <div className="flex items-center gap-4">
@@ -387,7 +423,7 @@ function StepBio({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">Tell us about yourself</h2>
+        <h2 className="text-xl font-bold text-gray-900 lg:text-2xl">Tell us about yourself</h2>
         <span className="text-sm text-gray-400">Optional</span>
       </div>
 
@@ -451,7 +487,7 @@ function StepPayment({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">Payment preferences</h2>
+        <h2 className="text-xl font-bold text-gray-900 lg:text-2xl">Payment preferences</h2>
         <p className="text-sm text-gray-500">How would you like to handle payments?</p>
       </div>
       <ChipSelect options={["Cash", "PayNow"]} selected={selected} onToggle={onToggle} />
@@ -469,7 +505,7 @@ function StepDelivery({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">Delivery preferences</h2>
+        <h2 className="text-xl font-bold text-gray-900 lg:text-2xl">Delivery preferences</h2>
         <p className="text-sm text-gray-500">How would you like to exchange items?</p>
       </div>
       <ChipSelect options={["Meet up", "Delivery"]} selected={selected} onToggle={onToggle} />
@@ -488,7 +524,7 @@ function StepDeliveryFee({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-xl font-bold text-gray-900">Set your delivery fee</h2>
+      <h2 className="text-xl font-bold text-gray-900 lg:text-2xl">Set your delivery fee</h2>
 
       {deliveryEnabled ? (
         <div>
@@ -530,10 +566,10 @@ function StepCategories({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">What interests you?</h2>
+        <h2 className="text-xl font-bold text-gray-900 lg:text-2xl">What interests you?</h2>
         <p className="text-sm text-gray-500">Select categories to personalize your feed</p>
       </div>
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3 lg:gap-3">
         {CATEGORIES.map((cat) => {
           const active = selected.includes(cat);
           return (
