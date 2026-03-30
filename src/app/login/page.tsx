@@ -60,10 +60,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-between bg-white px-6 py-12 font-sans">
-      <div />
+    <div className="flex flex-1 flex-col items-center justify-between bg-white px-6 py-12 font-sans lg:justify-center lg:gap-8">
+      <div className="lg:hidden" />
 
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm lg:max-w-md">
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>

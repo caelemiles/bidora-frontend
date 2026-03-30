@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { User } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
+import { supabase } from "@/lib/supabase";
+import { auth } from "@/lib/firebase";
 
 const TOTAL_STEPS = 6;
 
@@ -23,6 +25,8 @@ const CATEGORIES = [
 interface FormData {
   displayName: string;
   bio: string;
+  avatarFile: File | null;
+  avatarPreview: string;
   paymentMethods: string[];
   deliveryMethods: string[];
   deliveryFee: string;
@@ -35,10 +39,13 @@ export default function OnboardingPage() {
   const [direction, setDirection] = useState<"forward" | "back">("forward");
   const [animating, setAnimating] = useState(false);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     displayName: "",
     bio: "",
+    avatarFile: null,
+    avatarPreview: "",
     paymentMethods: [],
     deliveryMethods: [],
     deliveryFee: "",
@@ -68,9 +75,77 @@ export default function OnboardingPage() {
     goTo(step - 1);
   }
 
-  function handleFinish() {
-    console.log("Onboarding data:", formData);
-    router.push("/listings");
+  async function handleFinish() {
+    setError("");
+    setSubmitting(true);
+
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        setError("You must be logged in to complete onboarding.");
+        setSubmitting(false);
+        return;
+      }
+
+      let avatarUrl = "";
+
+      // Upload avatar if selected
+      if (formData.avatarFile) {
+        const fileExt = formData.avatarFile.name.split(".").pop();
+        const filePath = `avatars/${user.uid}.${fileExt}`;
+
+        console.log("[Onboarding] Uploading avatar:", filePath);
+        const { error: uploadError } = await supabase.storage
+          .from("listing-images")
+          .upload(filePath, formData.avatarFile, { upsert: true });
+
+        if (uploadError) {
+          console.error("[Onboarding] Avatar upload error:", uploadError);
+          setError(`Avatar upload failed: ${uploadError.message}`);
+          setSubmitting(false);
+          return;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from("listing-images")
+          .getPublicUrl(filePath);
+        avatarUrl = urlData.publicUrl;
+        console.log("[Onboarding] Avatar URL:", avatarUrl);
+      }
+
+      // Save profile to Supabase
+      const profileData = {
+        firebase_uid: user.uid,
+        email: user.email || "",
+        display_name: formData.displayName.trim(),
+        bio: formData.bio.trim(),
+        avatar_url: avatarUrl,
+        payment_methods: formData.paymentMethods,
+        delivery_methods: formData.deliveryMethods,
+        delivery_fee: formData.deliveryFee ? parseFloat(formData.deliveryFee) : 0,
+        category_interests: formData.categories,
+      };
+
+      console.log("[Onboarding] Saving profile:", profileData);
+
+      const { error: insertError } = await supabase
+        .from("users")
+        .upsert(profileData, { onConflict: "firebase_uid" });
+
+      if (insertError) {
+        console.error("[Onboarding] Profile save error:", insertError);
+        setError(`Failed to save profile: ${insertError.message}`);
+        setSubmitting(false);
+        return;
+      }
+
+      console.log("[Onboarding] Profile saved successfully!");
+      router.push("/listings");
+    } catch (err) {
+      console.error("[Onboarding] Unexpected error:", err);
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setSubmitting(false);
+    }
   }
 
   function toggle(field: "paymentMethods" | "deliveryMethods" | "categories", value: string) {
@@ -93,9 +168,9 @@ export default function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <div className="flex flex-1 flex-col items-center px-4 py-8">
+      <div className="flex flex-1 flex-col items-center px-4 py-8 lg:py-16">
         {/* Progress bar */}
-        <div className="mb-6 w-full max-w-md">
+        <div className="mb-6 w-full max-w-md lg:max-w-lg">
           <div className="mb-2 flex items-center justify-between text-sm font-medium text-gray-500">
             <span>Step {step} of {TOTAL_STEPS}</span>
           </div>
@@ -109,12 +184,16 @@ export default function OnboardingPage() {
 
         {/* Card */}
         <div
-          className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-sm transition-all duration-200 ${transitionClass}`}
+          className={`w-full max-w-md lg:max-w-lg rounded-2xl bg-white p-6 lg:p-8 shadow-sm transition-all duration-200 ${transitionClass}`}
         >
           {step === 1 && (
             <StepProfile
               displayName={formData.displayName}
               onChange={(v) => setFormData((p) => ({ ...p, displayName: v }))}
+              avatarPreview={formData.avatarPreview}
+              onAvatarChange={(file, preview) =>
+                setFormData((p) => ({ ...p, avatarFile: file, avatarPreview: preview }))
+              }
               error={error}
             />
           )}
@@ -181,12 +260,20 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={handleFinish}
-                className="flex h-11 items-center justify-center rounded-xl bg-[var(--success)] px-6 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 active:scale-[0.98]"
+                disabled={submitting}
+                className="flex h-11 items-center justify-center rounded-xl bg-[var(--success)] px-6 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
               >
-                Finish
+                {submitting ? "Saving…" : "Finish"}
               </button>
             )}
           </div>
+
+          {/* Submission error */}
+          {error && step === TOTAL_STEPS && (
+            <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-[var(--danger)]">
+              {error}
+            </p>
+          )}
         </div>
       </div>
 
@@ -205,27 +292,68 @@ export default function OnboardingPage() {
 function StepProfile({
   displayName,
   onChange,
+  avatarPreview,
+  onAvatarChange,
   error,
 }: {
   displayName: string;
   onChange: (v: string) => void;
+  avatarPreview: string;
+  onAvatarChange: (file: File, preview: string) => void;
   error: string;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleAvatarClick() {
+    fileInputRef.current?.click();
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Revoke old preview URL to prevent memory leak
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    const previewUrl = URL.createObjectURL(file);
+    onAvatarChange(file, previewUrl);
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <h2 className="text-xl font-bold text-gray-900">Set up your profile</h2>
 
-      {/* Avatar */}
+      {/* Avatar — tap to pick image */}
       <div className="flex items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-          <User className="h-8 w-8 text-gray-400" />
-        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+        />
         <button
           type="button"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          onClick={handleAvatarClick}
+          className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 overflow-hidden border-2 border-dashed border-gray-300 hover:border-[var(--primary)] transition-colors cursor-pointer group"
+          aria-label="Upload profile photo"
         >
-          Upload Photo
+          {avatarPreview ? (
+            <img
+              src={avatarPreview}
+              alt="Profile preview"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-0.5">
+              <User className="h-7 w-7 text-gray-400 group-hover:text-[var(--primary)]" />
+              <span className="text-[9px] font-medium text-gray-400 group-hover:text-[var(--primary)]">
+                Tap to add
+              </span>
+            </div>
+          )}
         </button>
+        {avatarPreview && (
+          <span className="text-xs text-gray-400">Tap photo to change</span>
+        )}
       </div>
 
       {/* Display name */}

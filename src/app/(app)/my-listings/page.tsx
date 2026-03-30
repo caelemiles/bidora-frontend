@@ -1,19 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Package, Plus } from "lucide-react";
 import CountdownTimer from "@/components/CountdownTimer";
+import { supabase } from "@/lib/supabase";
+import { auth } from "@/lib/firebase";
 
 type ListingStatus = "active" | "awaiting_confirmation" | "awaiting_completion" | "completed";
 
 interface MyListing {
   id: string;
   title: string;
-  gradient: string;
+  images: string[];
   currentBid: number;
   finalPrice?: number;
-  endsAt: number;
+  endsAt: string;
   status: ListingStatus;
 }
 
@@ -39,15 +41,22 @@ const STATUS_BADGE: Record<ListingStatus, { text: string; className: string }> =
 
 function ListingCard({ listing }: { listing: MyListing }) {
   const badge = STATUS_BADGE[listing.status];
+  const imageUrl = listing.images?.[0];
 
   return (
     <Link
       href={`/listings/${listing.id}`}
       className="flex gap-3 rounded-2xl bg-white p-3 shadow-sm transition-shadow hover:shadow-md"
     >
-      <div
-        className={`h-20 w-20 shrink-0 rounded-xl bg-gradient-to-br ${listing.gradient}`}
-      />
+      <div className="h-20 w-20 shrink-0 rounded-xl overflow-hidden bg-gray-100">
+        {imageUrl ? (
+          <img src={imageUrl} alt={listing.title} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500">
+            <span className="text-lg font-bold text-white/60">{listing.title[0]}</span>
+          </div>
+        )}
+      </div>
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
         <h3 className="truncate text-sm font-medium">{listing.title}</h3>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -72,19 +81,72 @@ function ListingCard({ listing }: { listing: MyListing }) {
 
 export default function MyListingsPage() {
   const [activeTab, setActiveTab] = useState<ListingStatus>("active");
+  const [listings, setListings] = useState<MyListing[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // No mock data — real data will come from API/Supabase
-  const listings: MyListing[] = [];
+  useEffect(() => {
+    async function fetchMyListings() {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          console.log("[MyListings] No user logged in");
+          setLoading(false);
+          return;
+        }
+
+        // Look up Supabase user ID
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("id")
+          .eq("firebase_uid", user.uid)
+          .single();
+
+        if (userError || !userData) {
+          console.error("[MyListings] User lookup error:", userError);
+          setLoading(false);
+          return;
+        }
+
+        console.log("[MyListings] Fetching listings for user:", userData.id);
+
+        const { data, error } = await supabase
+          .from("listings")
+          .select("*")
+          .eq("seller_id", userData.id)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("[MyListings] Fetch error:", error);
+        } else {
+          console.log("[MyListings] Fetched", data?.length ?? 0, "listings");
+          const mapped: MyListing[] = (data || []).map((row) => ({
+            id: row.id,
+            title: row.title,
+            images: row.images || [],
+            currentBid: row.current_bid || row.starting_bid,
+            endsAt: row.ends_at,
+            status: row.status as ListingStatus,
+          }));
+          setListings(mapped);
+        }
+      } catch (err) {
+        console.error("[MyListings] Unexpected error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchMyListings();
+  }, []);
 
   const filtered = listings.filter((l) => l.status === activeTab);
 
   return (
-    <div className="px-4 pt-5 max-w-2xl mx-auto">
+    <div className="px-4 pt-5 max-w-2xl mx-auto lg:max-w-4xl lg:px-8 lg:pt-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 lg:mb-6">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">My Listings</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Your created listings</p>
+          <h1 className="text-xl font-bold tracking-tight lg:text-2xl">My Listings</h1>
+          <p className="text-xs text-gray-400 mt-0.5 lg:text-sm">Your created listings</p>
         </div>
         <Link
           href="/sell"
@@ -114,7 +176,11 @@ export default function MyListingsPage() {
       </div>
 
       {/* Listing cards */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <p className="text-gray-400 text-sm">Loading your listings…</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
             <Package size={32} className="text-gray-300" />
