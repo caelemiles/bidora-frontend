@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Trophy } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
@@ -13,7 +13,7 @@ export default function WonPage() {
   const [showPassModal, setShowPassModal] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
-  const endsAt = Date.now() + TWENTY_FOUR_HOURS_MS;
+  const endsAt = useMemo(() => Date.now() + TWENTY_FOUR_HOURS_MS, []);
 
   function handleContinue() {
     setConfirmed(true);

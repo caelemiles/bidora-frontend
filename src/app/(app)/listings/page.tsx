@@ -42,96 +42,19 @@ interface Listing {
   isHot: boolean;
 }
 
-const MOCK_LISTINGS: Listing[] = [
-  {
-    id: "1",
-    title: "MacBook Pro 16″ M3 Max",
-    gradient: "from-indigo-500 to-purple-600",
-    currentBid: 2450,
-    startingBid: 1800,
-    endsAt: Date.now() + 2 * 3600000,
-    category: "Electronics",
-    status: "active",
-    isHot: true,
-  },
-  {
-    id: "2",
-    title: "Vintage Leather Jacket",
-    gradient: "from-amber-400 to-orange-500",
-    currentBid: 320,
-    startingBid: 150,
-    endsAt: Date.now() + 5 * 3600000,
-    category: "Fashion",
-    status: "active",
-    isHot: false,
-  },
-  {
-    id: "3",
-    title: "Mid-Century Modern Lamp",
-    gradient: "from-purple-400 to-indigo-500",
-    currentBid: 185,
-    startingBid: 80,
-    endsAt: Date.now() + 12 * 3600000,
-    category: "Home & Garden",
-    status: "active",
-    isHot: false,
-  },
-  {
-    id: "4",
-    title: "Signed Basketball Jersey",
-    gradient: "from-indigo-600 to-blue-500",
-    currentBid: 890,
-    startingBid: 500,
-    endsAt: Date.now() + 1 * 3600000,
-    category: "Sports",
-    status: "active",
-    isHot: true,
-  },
-  {
-    id: "5",
-    title: "1st Edition Pokémon Card",
-    gradient: "from-amber-500 to-yellow-400",
-    currentBid: 4200,
-    startingBid: 3000,
-    endsAt: Date.now() + 8 * 3600000,
-    category: "Collectibles",
-    status: "active",
-    isHot: true,
-  },
-  {
-    id: "6",
-    title: "Rare Philosophy Textbook",
-    gradient: "from-purple-500 to-pink-500",
-    currentBid: 75,
-    startingBid: 30,
-    endsAt: Date.now() + 24 * 3600000,
-    category: "Books",
-    status: "active",
-    isHot: false,
-  },
-  {
-    id: "7",
-    title: "LEGO Star Wars UCS Set",
-    gradient: "from-indigo-400 to-purple-400",
-    currentBid: 560,
-    startingBid: 350,
-    endsAt: Date.now() + 6 * 3600000,
-    category: "Toys",
-    status: "active",
-    isHot: false,
-  },
-  {
-    id: "8",
-    title: "Abstract Oil Painting 24×36",
-    gradient: "from-amber-600 to-purple-500",
-    currentBid: 1100,
-    startingBid: 700,
-    endsAt: Date.now() + 18 * 3600000,
-    category: "Art",
-    status: "active",
-    isHot: true,
-  },
-];
+// Hours offset from now for each listing – resolved inside the component to
+// avoid hydration mismatches caused by Date.now() running at different times
+// on server vs client.
+const MOCK_LISTING_DATA = [
+  { id: "1", title: "MacBook Pro 16″ M3 Max", gradient: "from-indigo-500 to-purple-600", currentBid: 2450, startingBid: 1800, hoursLeft: 2, category: "Electronics", isHot: true },
+  { id: "2", title: "Vintage Leather Jacket", gradient: "from-amber-400 to-orange-500", currentBid: 320, startingBid: 150, hoursLeft: 5, category: "Fashion", isHot: false },
+  { id: "3", title: "Mid-Century Modern Lamp", gradient: "from-purple-400 to-indigo-500", currentBid: 185, startingBid: 80, hoursLeft: 12, category: "Home & Garden", isHot: false },
+  { id: "4", title: "Signed Basketball Jersey", gradient: "from-indigo-600 to-blue-500", currentBid: 890, startingBid: 500, hoursLeft: 1, category: "Sports", isHot: true },
+  { id: "5", title: "1st Edition Pokémon Card", gradient: "from-amber-500 to-yellow-400", currentBid: 4200, startingBid: 3000, hoursLeft: 8, category: "Collectibles", isHot: true },
+  { id: "6", title: "Rare Philosophy Textbook", gradient: "from-purple-500 to-pink-500", currentBid: 75, startingBid: 30, hoursLeft: 24, category: "Books", isHot: false },
+  { id: "7", title: "LEGO Star Wars UCS Set", gradient: "from-indigo-400 to-purple-400", currentBid: 560, startingBid: 350, hoursLeft: 6, category: "Toys", isHot: false },
+  { id: "8", title: "Abstract Oil Painting 24×36", gradient: "from-amber-600 to-purple-500", currentBid: 1100, startingBid: 700, hoursLeft: 18, category: "Art", isHot: true },
+] as const;
 
 function ListingCard({ listing }: { listing: Listing }) {
   return (
@@ -176,18 +99,35 @@ function SkeletonCard() {
 
 export default function ListingsPage() {
   const [loading, setLoading] = useState(true);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [sort, setSort] = useState<SortValue>("newest");
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 800);
+    // Resolve mock data on the client to avoid hydration mismatches
+    const now = Date.now();
+    const resolved: Listing[] = MOCK_LISTING_DATA.map((d) => ({
+      id: d.id,
+      title: d.title,
+      gradient: d.gradient,
+      currentBid: d.currentBid,
+      startingBid: d.startingBid,
+      endsAt: now + d.hoursLeft * 3600000,
+      category: d.category,
+      status: "active" as const,
+      isHot: d.isHot,
+    }));
+    const timer = setTimeout(() => {
+      setListings(resolved);
+      setLoading(false);
+    }, 800);
     return () => clearTimeout(timer);
   }, []);
 
   const filtered = useMemo(() => {
-    let items = MOCK_LISTINGS.filter((l) => {
+    let items = listings.filter((l) => {
       const matchesSearch =
         !search || l.title.toLowerCase().includes(search.toLowerCase());
       const matchesCategory = category === "All" || l.category === category;
@@ -209,7 +149,7 @@ export default function ListingsPage() {
     }
 
     return items;
-  }, [search, category, sort]);
+  }, [listings, search, category, sort]);
 
   // Interleave AdBanners after every 4 cards
   function renderGrid() {

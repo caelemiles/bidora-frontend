@@ -1,25 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, Clock, User, MessageCircle } from "lucide-react";
 import CountdownTimer from "@/components/CountdownTimer";
 import AdBanner from "@/components/AdBanner";
 
-const MOCK_LISTING = {
-  id: "1",
-  title: "Vintage Mechanical Keyboard",
-  description:
-    "A beautifully restored vintage mechanical keyboard from the 1990s. Cherry MX Blue switches, full ANSI layout. Perfect for collectors and enthusiasts who appreciate the tactile feel of classic hardware. Comes with original keycaps and a custom USB adapter.",
-  currentBid: 85,
-  startingBid: 50,
-  endsAt: new Date(Date.now() + 3 * 3600 * 1000).toISOString(),
-  category: "Electronics",
-  condition: "Used - Like New",
-  seller: { name: "RetroTech", avatar: null },
-  images: 3,
-  isOwner: false,
-};
+function useMockListing() {
+  return useMemo(
+    () => ({
+      id: "1",
+      title: "Vintage Mechanical Keyboard",
+      description:
+        "A beautifully restored vintage mechanical keyboard from the 1990s. Cherry MX Blue switches, full ANSI layout. Perfect for collectors and enthusiasts who appreciate the tactile feel of classic hardware. Comes with original keycaps and a custom USB adapter.",
+      currentBid: 85,
+      startingBid: 50,
+      endsAt: new Date(Date.now() + 3 * 3600 * 1000).toISOString(),
+      category: "Electronics",
+      condition: "Used - Like New",
+      seller: { name: "RetroTech", avatar: null },
+      images: 3,
+      isOwner: false,
+    }),
+    [],
+  );
+}
 
 const IMAGE_GRADIENTS = [
   "from-indigo-400 to-purple-500",
@@ -28,7 +33,7 @@ const IMAGE_GRADIENTS = [
 ];
 
 export default function ListingDetailPage() {
-  const listing = MOCK_LISTING;
+  const listing = useMockListing();
 
   const [currentImage, setCurrentImage] = useState(0);
   const [showBidModal, setShowBidModal] = useState(false);

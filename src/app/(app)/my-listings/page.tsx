@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Package } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
@@ -38,57 +38,13 @@ const STATUS_BADGE: Record<ListingStatus, { text: string; className: string }> =
   completed: { text: "Completed", className: "bg-gray-100 text-gray-600" },
 };
 
-const MOCK_LISTINGS: MyListing[] = [
-  {
-    id: "101",
-    title: "MacBook Pro 16″ M3 Max",
-    gradient: "from-indigo-500 to-purple-600",
-    currentBid: 2450,
-    endsAt: Date.now() + 2 * 3600000,
-    status: "active",
-  },
-  {
-    id: "102",
-    title: "Vintage Leather Jacket",
-    gradient: "from-amber-400 to-orange-500",
-    currentBid: 320,
-    endsAt: Date.now() + 5 * 3600000,
-    status: "active",
-  },
-  {
-    id: "103",
-    title: "Mid-Century Modern Lamp",
-    gradient: "from-purple-400 to-indigo-500",
-    currentBid: 185,
-    endsAt: Date.now() - 1000,
-    status: "awaiting_confirmation",
-  },
-  {
-    id: "104",
-    title: "Signed Basketball Jersey",
-    gradient: "from-indigo-600 to-blue-500",
-    currentBid: 890,
-    endsAt: Date.now() - 1000,
-    status: "awaiting_completion",
-  },
-  {
-    id: "105",
-    title: "1st Edition Pokémon Card",
-    gradient: "from-amber-500 to-yellow-400",
-    currentBid: 4200,
-    finalPrice: 4200,
-    endsAt: Date.now() - 86400000,
-    status: "completed",
-  },
-  {
-    id: "106",
-    title: "Rare Philosophy Textbook",
-    gradient: "from-purple-500 to-pink-500",
-    currentBid: 75,
-    finalPrice: 75,
-    endsAt: Date.now() - 172800000,
-    status: "completed",
-  },
+const MOCK_LISTING_DATA = [
+  { id: "101", title: "MacBook Pro 16″ M3 Max", gradient: "from-indigo-500 to-purple-600", currentBid: 2450, hoursLeft: 2, status: "active" as ListingStatus },
+  { id: "102", title: "Vintage Leather Jacket", gradient: "from-amber-400 to-orange-500", currentBid: 320, hoursLeft: 5, status: "active" as ListingStatus },
+  { id: "103", title: "Mid-Century Modern Lamp", gradient: "from-purple-400 to-indigo-500", currentBid: 185, hoursLeft: -0.001, status: "awaiting_confirmation" as ListingStatus },
+  { id: "104", title: "Signed Basketball Jersey", gradient: "from-indigo-600 to-blue-500", currentBid: 890, hoursLeft: -0.001, status: "awaiting_completion" as ListingStatus },
+  { id: "105", title: "1st Edition Pokémon Card", gradient: "from-amber-500 to-yellow-400", currentBid: 4200, finalPrice: 4200, hoursLeft: -24, status: "completed" as ListingStatus },
+  { id: "106", title: "Rare Philosophy Textbook", gradient: "from-purple-500 to-pink-500", currentBid: 75, finalPrice: 75, hoursLeft: -48, status: "completed" as ListingStatus },
 ];
 
 function ListingCard({ listing }: { listing: MyListing }) {
@@ -137,7 +93,20 @@ function ListingCard({ listing }: { listing: MyListing }) {
 export default function MyListingsPage() {
   const [activeTab, setActiveTab] = useState<ListingStatus>("active");
 
-  const filtered = MOCK_LISTINGS.filter((l) => l.status === activeTab);
+  const listings = useMemo(() => {
+    const now = Date.now();
+    return MOCK_LISTING_DATA.map((d) => ({
+      id: d.id,
+      title: d.title,
+      gradient: d.gradient,
+      currentBid: d.currentBid,
+      finalPrice: (d as { finalPrice?: number }).finalPrice,
+      endsAt: now + d.hoursLeft * 3600000,
+      status: d.status,
+    }));
+  }, []);
+
+  const filtered = listings.filter((l) => l.status === activeTab);
 
   return (
     <div className="px-4 pt-4 max-w-2xl mx-auto">
