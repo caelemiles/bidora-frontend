@@ -37,9 +37,9 @@ Go to: SQL Editor (in the Supabase dashboard sidebar).
 
 Copy and run the following SQL to create all the tables the app needs:
 
--- USERS TABLE
+-- PROFILES TABLE
 -- Stores user profile information
-create table public.users (
+create table public.profiles (
   id uuid primary key default gen_random_uuid(),
   firebase_uid text unique not null,
   email text not null,
@@ -50,6 +50,7 @@ create table public.users (
   delivery_methods text[] default '{}',
   delivery_fee numeric(10,2) default 0,
   category_interests text[] default '{}',
+  onboarding_completed boolean default false,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -58,7 +59,7 @@ create table public.users (
 -- Stores all auction listings
 create table public.listings (
   id uuid primary key default gen_random_uuid(),
-  seller_id uuid references public.users(id) on delete cascade,
+  seller_id uuid references public.profiles(id) on delete cascade,
   title text not null,
   description text,
   category text not null,
@@ -80,7 +81,7 @@ create table public.listings (
 create table public.bids (
   id uuid primary key default gen_random_uuid(),
   listing_id uuid references public.listings(id) on delete cascade,
-  bidder_id uuid references public.users(id) on delete cascade,
+  bidder_id uuid references public.profiles(id) on delete cascade,
   amount numeric(10,2) not null,
   created_at timestamptz default now()
 );
@@ -92,8 +93,8 @@ create table public.chats (
   listing_id uuid references public.listings(id) on delete set null,
   type text not null default 'inquiry',
     -- type values: 'inquiry', 'deal'
-  participant_a uuid references public.users(id) on delete cascade,
-  participant_b uuid references public.users(id) on delete cascade,
+  participant_a uuid references public.profiles(id) on delete cascade,
+  participant_b uuid references public.profiles(id) on delete cascade,
   status text not null default 'active',
     -- status values: 'active', 'closed', 'archived', 'expired'
   closed_by_a boolean default false,
@@ -107,7 +108,7 @@ create table public.chats (
 create table public.messages (
   id uuid primary key default gen_random_uuid(),
   chat_id uuid references public.chats(id) on delete cascade,
-  sender_id uuid references public.users(id) on delete cascade,
+  sender_id uuid references public.profiles(id) on delete cascade,
   text text not null,
   created_at timestamptz default now()
 );
@@ -117,7 +118,7 @@ create table public.messages (
 create table public.auction_wins (
   id uuid primary key default gen_random_uuid(),
   listing_id uuid references public.listings(id) on delete cascade,
-  winner_id uuid references public.users(id) on delete cascade,
+  winner_id uuid references public.profiles(id) on delete cascade,
   final_price numeric(10,2) not null,
   confirmed boolean default false,
   passed boolean default false,
@@ -131,7 +132,7 @@ STEP 4 — ENABLE ROW LEVEL SECURITY (RLS)
 For each table, you need to enable Row Level Security so users can only
 access their own data. In the SQL Editor, run:
 
-alter table public.users enable row level security;
+alter table public.profiles enable row level security;
 alter table public.listings enable row level security;
 alter table public.bids enable row level security;
 alter table public.chats enable row level security;
@@ -173,12 +174,19 @@ STEP 5 — ENABLE STORAGE (FOR IMAGES)
 -------------------------------------
 1. Go to: Storage (in the Supabase dashboard sidebar).
 2. Click "New Bucket".
-3. Name it "listing-images".
-4. Make it a public bucket if you want images to be publicly viewable.
+3. Name it "avatars".
+4. Make it a public bucket so avatar images are publicly viewable.
 5. Set a file size limit (e.g. 5MB per file).
 
-Users will upload listing images to this bucket. The app will store the
-image URLs in the listings.images column.
+Then create a second bucket:
+1. Click "New Bucket" again.
+2. Name it "listing-images".
+3. Make it a public bucket if you want listing images to be publicly viewable.
+4. Set a file size limit (e.g. 5MB per file).
+
+Users will upload profile pictures to the "avatars" bucket, and listing
+images to the "listing-images" bucket. The app stores the resulting
+public URLs in the profiles.avatar_url and listings.images columns.
 
 
 STEP 6 — CONNECT THE APP TO SUPABASE
@@ -206,7 +214,7 @@ STEP 7 — UNDERSTANDING THE DATA FLOW
 -------------------------------------
 Here is how the app data maps to the tables:
 
-• When a user signs up → A row is created in the "users" table
+• When a user signs up → A row is created in the "profiles" table
 • When a user creates a listing → A row is created in "listings"
 • When a user places a bid → A row is created in "bids"
 • When a user sends an inquiry → A chat row is created with type='inquiry'
@@ -227,7 +235,7 @@ For live chat functionality:
 
 SUMMARY OF TABLES
 -----------------
-1. users         — User profiles and preferences
+1. profiles      — User profiles and preferences
 2. listings      — All auction listings
 3. bids          — Bids placed on listings
 4. chats         — Chat conversations (inquiries + deals)
@@ -236,7 +244,8 @@ SUMMARY OF TABLES
 
 STORAGE BUCKETS
 ---------------
-1. listing-images — Images uploaded for listings
+1. avatars        — Profile picture uploads
+2. listing-images — Images uploaded for listings
 
 
 That's it! Once these steps are complete, the Bidora app will be able to

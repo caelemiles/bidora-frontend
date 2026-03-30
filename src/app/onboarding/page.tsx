@@ -105,7 +105,7 @@ export default function OnboardingPage() {
       if (formData.avatarFile) {
         const fileExt = formData.avatarFile.name.split(".").pop();
         const filePath = `avatars/${user.uid}.${fileExt}`;
-        const bucket = "listing-images";
+        const bucket = "avatars";
 
         console.log("[Onboarding] Uploading avatar...");
         console.log("[Onboarding]   Bucket:", bucket);
@@ -133,7 +133,7 @@ export default function OnboardingPage() {
         }
 
         const { data: urlData } = supabase.storage
-          .from("listing-images")
+          .from("avatars")
           .getPublicUrl(filePath);
         avatarUrl = urlData.publicUrl;
         console.log("[Onboarding] Avatar uploaded. Public URL:", avatarUrl);
@@ -150,14 +150,15 @@ export default function OnboardingPage() {
         delivery_methods: formData.deliveryMethods,
         delivery_fee: formData.deliveryFee ? parseFloat(formData.deliveryFee) : 0,
         category_interests: formData.categories,
+        onboarding_completed: true,
       };
 
-      console.log("[Onboarding] Saving profile to Supabase 'users' table...");
+      console.log("[Onboarding] Saving profile to Supabase 'profiles' table...");
       console.log("[Onboarding]   Payload:", JSON.stringify(profileData, null, 2));
 
       try {
         const { error: insertError } = await supabase
-          .from("users")
+          .from("profiles")
           .upsert(profileData, { onConflict: "firebase_uid" });
 
         if (insertError) {
@@ -169,7 +170,7 @@ export default function OnboardingPage() {
       } catch (saveErr) {
         console.error("[Onboarding] Profile save network error:", saveErr);
         const detail = saveErr instanceof Error ? saveErr.message : String(saveErr);
-        setError(`Failed to save profile (network error): ${detail}. Check that Supabase is configured and the "users" table exists.`);
+        setError(`Failed to save profile (network error): ${detail}. Check that Supabase is configured and the "profiles" table exists.`);
         setSubmitting(false);
         return;
       }
