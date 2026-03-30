@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
 
 async function firebaseSignup(email: string, password: string) {
@@ -21,12 +22,21 @@ export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
     try {
       const cred = await firebaseSignup(email, password);
@@ -61,15 +71,16 @@ export default function SignupPage() {
     }
   }
 
-  return (
-    <div className="flex flex-1 flex-col items-center justify-between bg-white px-6 py-12 font-sans lg:justify-center lg:gap-8">
-      <div className="lg:hidden" />
+  const passwordMismatch =
+    confirmPassword.length > 0 && password !== confirmPassword;
 
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 py-12 font-sans lg:px-8">
       <div className="w-full max-w-sm lg:max-w-md">
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Create account</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-900 lg:text-3xl">Create account</h1>
+          <p className="mt-1 text-sm text-gray-500 lg:text-base">
             Join Bidora and start bidding
           </p>
         </div>
@@ -77,7 +88,7 @@ export default function SignupPage() {
         {/* Form Card */}
         <form
           onSubmit={handleSignup}
-          className="flex flex-col gap-4 rounded-2xl bg-gray-50 p-6 shadow-sm"
+          className="flex flex-col gap-4 rounded-2xl bg-gray-50 p-6 shadow-sm lg:p-8"
         >
           <input
             type="email"
@@ -87,14 +98,57 @@ export default function SignupPage() {
             onChange={(e) => setEmail(e.target.value)}
             className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 placeholder-gray-400 outline-none transition-shadow focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)]"
           />
-          <input
-            type="password"
-            placeholder="Password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 placeholder-gray-400 outline-none transition-shadow focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)]"
-          />
+
+          {/* Password field with show/hide toggle */}
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 pr-11 text-sm text-gray-900 placeholder-gray-400 outline-none transition-shadow focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)]"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 transition-colors hover:text-gray-600"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+
+          {/* Confirm password field with show/hide toggle */}
+          <div>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Confirm Password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className={`h-12 w-full rounded-xl border bg-white px-4 pr-11 text-sm text-gray-900 placeholder-gray-400 outline-none transition-shadow focus:ring-2 ${
+                  passwordMismatch
+                    ? "border-[var(--danger)] focus:border-[var(--danger)] focus:ring-red-100"
+                    : "border-gray-200 focus:border-[var(--primary)] focus:ring-[var(--primary-light)]"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 transition-colors hover:text-gray-600"
+                aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {passwordMismatch && (
+              <p className="mt-1.5 text-xs font-medium text-[var(--danger)]">
+                Passwords do not match
+              </p>
+            )}
+          </div>
 
           {error && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-[var(--danger)]">
@@ -104,7 +158,7 @@ export default function SignupPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || passwordMismatch}
             className="flex h-12 items-center justify-center rounded-xl bg-[var(--primary)] text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {loading ? "Creating account…" : "Create Account"}
@@ -159,7 +213,7 @@ export default function SignupPage() {
       </div>
 
       {/* Bottom ad */}
-      <div className="mt-8 w-full max-w-sm">
+      <div className="mt-8 w-full max-w-sm lg:max-w-md">
         <AdBanner />
       </div>
     </div>
