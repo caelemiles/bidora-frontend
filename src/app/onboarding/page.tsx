@@ -6,6 +6,7 @@ import { User } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { auth } from "@/lib/firebase";
+import { api } from "@/lib/api";
 
 const TOTAL_STEPS = 6;
 
@@ -101,42 +102,25 @@ export default function OnboardingPage() {
 
       let avatarUrl = "";
 
-      // Upload avatar if selected
+      // Upload avatar via backend if selected
       if (formData.avatarFile) {
-        const fileExt = formData.avatarFile.name.split(".").pop();
-        const filePath = `avatars/${user.uid}.${fileExt}`;
-        const bucket = "avatars";
-
-        console.log("[Onboarding] Uploading avatar...");
-        console.log("[Onboarding]   Bucket:", bucket);
-        console.log("[Onboarding]   Path:", filePath);
+        console.log("[Onboarding] Uploading avatar via backend...");
         console.log("[Onboarding]   File size:", formData.avatarFile.size, "bytes");
         console.log("[Onboarding]   File type:", formData.avatarFile.type);
 
         try {
-          const { error: uploadError } = await supabase.storage
-            .from(bucket)
-            .upload(filePath, formData.avatarFile, { upsert: true });
-
-          if (uploadError) {
-            console.error("[Onboarding] Avatar upload error:", JSON.stringify(uploadError, null, 2));
-            setError(`Avatar upload failed: ${uploadError.message}`);
-            setSubmitting(false);
-            return;
-          }
+          const uploadData = new FormData();
+          uploadData.append("file", formData.avatarFile);
+          const { url } = await api.upload<{ url: string }>("/api/upload-avatar", uploadData);
+          avatarUrl = url;
+          console.log("[Onboarding] Avatar uploaded. Public URL:", avatarUrl);
         } catch (uploadErr) {
-          console.error("[Onboarding] Avatar upload network error:", uploadErr);
+          console.error("[Onboarding] Avatar upload error:", uploadErr);
           const detail = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
-          setError(`Avatar upload failed (network error): ${detail}. Check that Supabase is configured and the storage bucket "${bucket}" exists.`);
+          setError(`Avatar upload failed: ${detail}`);
           setSubmitting(false);
           return;
         }
-
-        const { data: urlData } = supabase.storage
-          .from("avatars")
-          .getPublicUrl(filePath);
-        avatarUrl = urlData.publicUrl;
-        console.log("[Onboarding] Avatar uploaded. Public URL:", avatarUrl);
       }
 
       // Save profile to Supabase
