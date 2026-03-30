@@ -26,6 +26,7 @@ export const metadata: Metadata = {
   title: "Bidora — Buy. Sell. Bid. Win.",
   description:
     "Bidora is a modern auction marketplace where you can browse listings, place bids, and win deals.",
+  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {

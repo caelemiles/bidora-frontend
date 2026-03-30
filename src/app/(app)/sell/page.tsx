@@ -38,7 +38,12 @@ const PLACEHOLDER_GRADIENTS = [
   "from-emerald-400 to-teal-500",
   "from-pink-400 to-rose-500",
   "from-sky-400 to-blue-500",
+  "from-violet-400 to-fuchsia-500",
+  "from-cyan-400 to-sky-500",
+  "from-lime-400 to-emerald-500",
 ];
+
+const MAX_IMAGES = 8;
 
 interface FormErrors {
   title?: string;
@@ -91,7 +96,7 @@ export default function SellPage() {
   }
 
   function addImage() {
-    if (images.length >= 5) return;
+    if (images.length >= MAX_IMAGES) return;
     setImages((prev) => [
       ...prev,
       PLACEHOLDER_GRADIENTS[prev.length % PLACEHOLDER_GRADIENTS.length],
@@ -301,7 +306,7 @@ export default function SellPage() {
           )}
 
           {/* Upload area */}
-          {images.length < 5 && (
+          {images.length < MAX_IMAGES && (
             <button
               type="button"
               onClick={addImage}
@@ -309,7 +314,7 @@ export default function SellPage() {
             >
               <Camera size={28} />
               <span className="text-sm font-medium">Tap to add photos</span>
-              <span className="text-xs">Up to 5 images</span>
+              <span className="text-xs" aria-live="polite">{images.length}/{MAX_IMAGES} images</span>
             </button>
           )}
         </div>

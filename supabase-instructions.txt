@@ -1,0 +1,244 @@
+=====================================
+SUPABASE SETUP INSTRUCTIONS FOR BIDORA
+=====================================
+
+This file explains step by step how to set up Supabase so the Bidora app
+can store all its data (users, listings, bids, chats, etc.) properly.
+
+
+STEP 1 — CREATE A SUPABASE PROJECT
+-----------------------------------
+1. Go to https://supabase.com and sign up or log in.
+2. Click "New Project".
+3. Choose your organization (or create one).
+4. Give the project a name, e.g. "bidora".
+5. Set a strong database password — save this somewhere safe.
+6. Choose a region close to your users.
+7. Click "Create new project" and wait for it to finish setting up.
+
+
+STEP 2 — GET YOUR PROJECT CREDENTIALS
+--------------------------------------
+After your project is created, go to:
+  Project Settings → API
+
+You need two values:
+  - Project URL (looks like: https://xxxxx.supabase.co)
+  - anon/public key (a long string starting with "eyJ...")
+
+Save these — you will add them to the app's .env file as:
+  NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+
+
+STEP 3 — CREATE THE DATABASE TABLES
+------------------------------------
+Go to: SQL Editor (in the Supabase dashboard sidebar).
+
+Copy and run the following SQL to create all the tables the app needs:
+
+-- USERS TABLE
+-- Stores user profile information
+create table public.users (
+  id uuid primary key default gen_random_uuid(),
+  firebase_uid text unique not null,
+  email text not null,
+  display_name text,
+  bio text,
+  avatar_url text,
+  payment_methods text[] default '{}',
+  delivery_methods text[] default '{}',
+  delivery_fee numeric(10,2) default 0,
+  category_interests text[] default '{}',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- LISTINGS TABLE
+-- Stores all auction listings
+create table public.listings (
+  id uuid primary key default gen_random_uuid(),
+  seller_id uuid references public.users(id) on delete cascade,
+  title text not null,
+  description text,
+  category text not null,
+  condition text not null,
+  starting_bid numeric(10,2) not null,
+  current_bid numeric(10,2),
+  buy_now_price numeric(10,2),
+  duration_days integer not null default 7,
+  ends_at timestamptz not null,
+  status text not null default 'active',
+    -- status values: 'active', 'awaiting_confirmation', 'awaiting_completion', 'completed', 'cancelled'
+  images text[] default '{}',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- BIDS TABLE
+-- Stores all bids placed on listings
+create table public.bids (
+  id uuid primary key default gen_random_uuid(),
+  listing_id uuid references public.listings(id) on delete cascade,
+  bidder_id uuid references public.users(id) on delete cascade,
+  amount numeric(10,2) not null,
+  created_at timestamptz default now()
+);
+
+-- CHATS TABLE
+-- Stores chat conversations (inquiries and deal chats)
+create table public.chats (
+  id uuid primary key default gen_random_uuid(),
+  listing_id uuid references public.listings(id) on delete set null,
+  type text not null default 'inquiry',
+    -- type values: 'inquiry', 'deal'
+  participant_a uuid references public.users(id) on delete cascade,
+  participant_b uuid references public.users(id) on delete cascade,
+  status text not null default 'active',
+    -- status values: 'active', 'closed', 'archived', 'expired'
+  closed_by_a boolean default false,
+  closed_by_b boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- MESSAGES TABLE
+-- Stores individual messages within chats
+create table public.messages (
+  id uuid primary key default gen_random_uuid(),
+  chat_id uuid references public.chats(id) on delete cascade,
+  sender_id uuid references public.users(id) on delete cascade,
+  text text not null,
+  created_at timestamptz default now()
+);
+
+-- AUCTION WINS TABLE
+-- Tracks auction outcomes
+create table public.auction_wins (
+  id uuid primary key default gen_random_uuid(),
+  listing_id uuid references public.listings(id) on delete cascade,
+  winner_id uuid references public.users(id) on delete cascade,
+  final_price numeric(10,2) not null,
+  confirmed boolean default false,
+  passed boolean default false,
+  confirmation_deadline timestamptz not null,
+  created_at timestamptz default now()
+);
+
+
+STEP 4 — ENABLE ROW LEVEL SECURITY (RLS)
+-----------------------------------------
+For each table, you need to enable Row Level Security so users can only
+access their own data. In the SQL Editor, run:
+
+alter table public.users enable row level security;
+alter table public.listings enable row level security;
+alter table public.bids enable row level security;
+alter table public.chats enable row level security;
+alter table public.messages enable row level security;
+alter table public.auction_wins enable row level security;
+
+Then create basic policies. Here are examples:
+
+-- Users can read all listings (marketplace is public)
+create policy "Public listings" on public.listings
+  for select using (true);
+
+-- Users can only insert their own listings
+create policy "Users insert own listings" on public.listings
+  for insert with check (auth.uid() is not null and seller_id = auth.uid()::uuid);
+
+-- Users can read their own chats
+create policy "Users read own chats" on public.chats
+  for select using (
+    participant_a = auth.uid()::uuid or
+    participant_b = auth.uid()::uuid
+  );
+
+-- Users can read messages in their own chats
+create policy "Users read own messages" on public.messages
+  for select using (
+    chat_id in (
+      select id from public.chats
+      where participant_a = auth.uid()::uuid
+         or participant_b = auth.uid()::uuid
+    )
+  );
+
+Note: You will need to customize these policies based on your exact
+security requirements. The above are starting points.
+
+
+STEP 5 — ENABLE STORAGE (FOR IMAGES)
+-------------------------------------
+1. Go to: Storage (in the Supabase dashboard sidebar).
+2. Click "New Bucket".
+3. Name it "listing-images".
+4. Make it a public bucket if you want images to be publicly viewable.
+5. Set a file size limit (e.g. 5MB per file).
+
+Users will upload listing images to this bucket. The app will store the
+image URLs in the listings.images column.
+
+
+STEP 6 — CONNECT THE APP TO SUPABASE
+-------------------------------------
+1. In the Bidora app repo, create or update your .env.local file:
+
+   NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+
+2. Install the Supabase client library:
+
+   npm install @supabase/supabase-js
+
+3. Create a Supabase client file (e.g. src/lib/supabase.ts):
+
+   import { createClient } from '@supabase/supabase-js'
+
+   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+   export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+
+STEP 7 — UNDERSTANDING THE DATA FLOW
+-------------------------------------
+Here is how the app data maps to the tables:
+
+• When a user signs up → A row is created in the "users" table
+• When a user creates a listing → A row is created in "listings"
+• When a user places a bid → A row is created in "bids"
+• When a user sends an inquiry → A chat row is created with type='inquiry'
+• When a user wins an auction → A row is created in "auction_wins"
+  and a chat with type='deal' is created for the buyer and seller
+• Messages in any chat → Rows are created in "messages"
+• When both parties close an inquiry/deal → The chat status changes
+  to 'closed', and users can then archive or delete it
+
+
+STEP 8 — ENABLE REALTIME (OPTIONAL BUT RECOMMENDED)
+----------------------------------------------------
+For live chat functionality:
+1. Go to: Database → Replication
+2. Enable replication for the "messages" table
+3. This allows the app to subscribe to new messages in real time
+
+
+SUMMARY OF TABLES
+-----------------
+1. users         — User profiles and preferences
+2. listings      — All auction listings
+3. bids          — Bids placed on listings
+4. chats         — Chat conversations (inquiries + deals)
+5. messages      — Individual chat messages
+6. auction_wins  — Auction outcome tracking
+
+STORAGE BUCKETS
+---------------
+1. listing-images — Images uploaded for listings
+
+
+That's it! Once these steps are complete, the Bidora app will be able to
+store and retrieve all data through Supabase. If you run into any issues,
+check the Supabase docs at https://supabase.com/docs for detailed guides.

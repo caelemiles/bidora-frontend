@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Search, PackageSearch } from "lucide-react";
-import AdBanner from "@/components/AdBanner";
 import CountdownTimer from "@/components/CountdownTimer";
 import Skeleton from "@/components/Skeleton";
 
@@ -42,43 +41,26 @@ interface Listing {
   isHot: boolean;
 }
 
-// Hours offset from now for each listing – resolved inside the component to
-// avoid hydration mismatches caused by Date.now() running at different times
-// on server vs client.
-const MOCK_LISTING_DATA = [
-  { id: "1", title: "MacBook Pro 16″ M3 Max", gradient: "from-indigo-500 to-purple-600", currentBid: 2450, startingBid: 1800, hoursLeft: 2, category: "Electronics", isHot: true },
-  { id: "2", title: "Vintage Leather Jacket", gradient: "from-amber-400 to-orange-500", currentBid: 320, startingBid: 150, hoursLeft: 5, category: "Fashion", isHot: false },
-  { id: "3", title: "Mid-Century Modern Lamp", gradient: "from-purple-400 to-indigo-500", currentBid: 185, startingBid: 80, hoursLeft: 12, category: "Home & Garden", isHot: false },
-  { id: "4", title: "Signed Basketball Jersey", gradient: "from-indigo-600 to-blue-500", currentBid: 890, startingBid: 500, hoursLeft: 1, category: "Sports", isHot: true },
-  { id: "5", title: "1st Edition Pokémon Card", gradient: "from-amber-500 to-yellow-400", currentBid: 4200, startingBid: 3000, hoursLeft: 8, category: "Collectibles", isHot: true },
-  { id: "6", title: "Rare Philosophy Textbook", gradient: "from-purple-500 to-pink-500", currentBid: 75, startingBid: 30, hoursLeft: 24, category: "Books", isHot: false },
-  { id: "7", title: "LEGO Star Wars UCS Set", gradient: "from-indigo-400 to-purple-400", currentBid: 560, startingBid: 350, hoursLeft: 6, category: "Toys", isHot: false },
-  { id: "8", title: "Abstract Oil Painting 24×36", gradient: "from-amber-600 to-purple-500", currentBid: 1100, startingBid: 700, hoursLeft: 18, category: "Art", isHot: true },
-] as const;
-
 function ListingCard({ listing }: { listing: Listing }) {
   return (
     <Link
       href={`/listings/${listing.id}`}
-      className="block rounded-2xl bg-white shadow-sm overflow-hidden"
+      className="block rounded-2xl bg-white shadow-sm overflow-hidden transition-shadow hover:shadow-md"
     >
-      {/* Image placeholder */}
       <div className={`relative aspect-[4/3] bg-gradient-to-br ${listing.gradient}`}>
         {listing.isHot && (
-          <span className="absolute top-2 left-2 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+          <span className="absolute top-2 left-2 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
             Hot
           </span>
         )}
       </div>
-
-      {/* Details */}
-      <div className="p-2.5 space-y-1">
+      <div className="p-3 space-y-1.5">
         <h3 className="font-medium text-sm line-clamp-1">{listing.title}</h3>
         <p className="text-indigo-600 font-bold text-sm">
           ${listing.currentBid.toLocaleString()}
         </p>
-        <CountdownTimer endsAt={listing.endsAt} className="text-xs" />
-        <p className="text-xs text-gray-400">{listing.category}</p>
+        <CountdownTimer endsAt={listing.endsAt} className="text-xs text-gray-500" />
+        <p className="text-[11px] text-gray-400">{listing.category}</p>
       </div>
     </Link>
   );
@@ -88,7 +70,7 @@ function SkeletonCard() {
   return (
     <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
       <Skeleton className="aspect-[4/3] w-full rounded-none" />
-      <div className="p-2.5 space-y-2">
+      <div className="p-3 space-y-2">
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-4 w-1/2" />
         <Skeleton className="h-3 w-1/3" />
@@ -106,23 +88,11 @@ export default function ListingsPage() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Resolve mock data on the client to avoid hydration mismatches
-    const now = Date.now();
-    const resolved: Listing[] = MOCK_LISTING_DATA.map((d) => ({
-      id: d.id,
-      title: d.title,
-      gradient: d.gradient,
-      currentBid: d.currentBid,
-      startingBid: d.startingBid,
-      endsAt: now + d.hoursLeft * 3600000,
-      category: d.category,
-      status: "active" as const,
-      isHot: d.isHot,
-    }));
+    // TODO: Fetch real listings from API/Supabase
     const timer = setTimeout(() => {
-      setListings(resolved);
+      setListings([]);
       setLoading(false);
-    }, 800);
+    }, 600);
     return () => clearTimeout(timer);
   }, []);
 
@@ -151,28 +121,14 @@ export default function ListingsPage() {
     return items;
   }, [listings, search, category, sort]);
 
-  // Interleave AdBanners after every 4 cards
-  function renderGrid() {
-    const elements: React.ReactNode[] = [];
-    for (let i = 0; i < filtered.length; i++) {
-      elements.push(<ListingCard key={filtered[i].id} listing={filtered[i]} />);
-
-      if ((i + 1) % 4 === 0 && i + 1 < filtered.length) {
-        elements.push(
-          <div key={`ad-${i}`} className="col-span-full">
-            <AdBanner />
-          </div>
-        );
-      }
-    }
-    return elements;
-  }
-
   return (
-    <div className="px-4 pt-4 max-w-6xl mx-auto">
+    <div className="px-4 pt-5 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">Marketplace</h1>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Marketplace</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Browse all active listings</p>
+        </div>
         <button
           type="button"
           className="flex h-9 w-9 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 transition-colors"
@@ -240,23 +196,28 @@ export default function ListingsPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <PackageSearch size={48} className="text-gray-300 mb-3" />
-          <p className="text-gray-500 font-medium">No listings found</p>
-          <p className="text-gray-400 text-sm mt-1">
-            Try adjusting your search or filters
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+            <PackageSearch size={32} className="text-gray-300" />
+          </div>
+          <p className="text-gray-500 font-medium">No listings yet</p>
+          <p className="text-gray-400 text-sm mt-1 max-w-[240px]">
+            When sellers create listings, they will appear here. Be the first to list something!
           </p>
+          <Link
+            href="/sell"
+            className="mt-4 inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+          >
+            Create Listing
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {renderGrid()}
+          {filtered.map((listing) => (
+            <ListingCard key={listing.id} listing={listing} />
+          ))}
         </div>
       )}
-
-      {/* Bottom AdBanner */}
-      <div className="mt-6 mb-4">
-        <AdBanner />
-      </div>
     </div>
   );
 }
