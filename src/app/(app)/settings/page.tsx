@@ -16,6 +16,7 @@ import {
   HelpCircle,
   Mail,
 } from "lucide-react";
+import type { BeforeInstallPromptEvent } from "@/types/pwa";
 
 interface SettingsRow {
   icon: React.ReactNode;
@@ -183,7 +184,4 @@ export default function SettingsPage() {
   );
 }
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
+

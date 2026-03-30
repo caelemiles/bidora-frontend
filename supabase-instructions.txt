@@ -146,7 +146,7 @@ create policy "Public listings" on public.listings
 
 -- Users can only insert their own listings
 create policy "Users insert own listings" on public.listings
-  for insert with check (seller_id = auth.uid()::uuid);
+  for insert with check (auth.uid() is not null and seller_id = auth.uid()::uuid);
 
 -- Users can read their own chats
 create policy "Users read own chats" on public.chats

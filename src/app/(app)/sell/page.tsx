@@ -314,7 +314,7 @@ export default function SellPage() {
             >
               <Camera size={28} />
               <span className="text-sm font-medium">Tap to add photos</span>
-              <span className="text-xs">{images.length}/{MAX_IMAGES} images</span>
+              <span className="text-xs" aria-live="polite">{images.length}/{MAX_IMAGES} images</span>
             </button>
           )}
         </div>

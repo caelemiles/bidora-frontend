@@ -62,11 +62,13 @@ export default function ChatPage() {
             <button
               onClick={() => setShowMenu(!showMenu)}
               className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+              aria-label="Chat actions menu"
+              aria-expanded={showMenu}
             >
               <MoreVertical size={18} className="text-gray-500" />
             </button>
             {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-48 rounded-xl bg-white shadow-lg border border-gray-100 py-1 z-20">
+              <div className="absolute right-0 top-full mt-1 w-48 rounded-xl bg-white shadow-lg border border-gray-100 py-1 z-20" role="menu">
                 {!dealCompleted && (
                   <button
                     onClick={() => {
@@ -74,6 +76,7 @@ export default function ChatPage() {
                       setShowMenu(false);
                     }}
                     className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-emerald-600 hover:bg-gray-50"
+                    role="menuitem"
                   >
                     <CheckCircle2 size={16} />
                     Deal Complete
@@ -82,6 +85,7 @@ export default function ChatPage() {
                 <button
                   onClick={() => setShowMenu(false)}
                   className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+                  role="menuitem"
                 >
                   <Archive size={16} />
                   Archive Chat
@@ -89,6 +93,7 @@ export default function ChatPage() {
                 <button
                   onClick={() => setShowMenu(false)}
                   className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-gray-50"
+                  role="menuitem"
                 >
                   <Trash2 size={16} />
                   Delete Chat
