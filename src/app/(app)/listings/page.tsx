@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Search, PackageSearch } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
@@ -179,6 +179,7 @@ export default function ListingsPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [sort, setSort] = useState<SortValue>("newest");
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 800);
@@ -236,10 +237,7 @@ export default function ListingsPage() {
           type="button"
           className="flex h-9 w-9 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 transition-colors"
           aria-label="Search"
-          onClick={() => {
-            const input = document.getElementById("listing-search");
-            input?.focus();
-          }}
+          onClick={() => searchRef.current?.focus()}
         >
           <Search size={20} />
         </button>
@@ -252,7 +250,7 @@ export default function ListingsPage() {
           className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
         />
         <input
-          id="listing-search"
+          ref={searchRef}
           type="text"
           placeholder="Search listings..."
           value={search}
