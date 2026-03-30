@@ -311,6 +311,8 @@ function StepProfile({
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Revoke old preview URL to prevent memory leak
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
     const previewUrl = URL.createObjectURL(file);
     onAvatarChange(file, previewUrl);
   }
