@@ -19,16 +19,18 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
+      console.log("[Admin Login] POST /api/admin/login");
       const res = await api.post<{ token: string }>("/api/admin/login", {
         email,
         password,
       });
       localStorage.setItem("admin_token", res.token);
+      console.log("[Admin Login] ✅ Login successful, token stored.");
       router.push("/admin");
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Admin login failed.";
-      setError(msg);
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error("[Admin Login] ❌ Login failed:", detail);
+      setError(detail);
     } finally {
       setLoading(false);
     }
