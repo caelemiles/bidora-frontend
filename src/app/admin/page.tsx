@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import {
   Users,
   UserCheck,
@@ -8,10 +9,15 @@ import {
   PackageCheck,
   CheckCircle,
   MessageCircle,
+  MessageSquare,
+  Handshake,
   Gavel,
-  TrendingUp,
+  ShieldBan,
   RefreshCw,
   AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -23,8 +29,18 @@ interface DashboardStats {
   active_listings: number;
   completed_listings: number;
   active_chats: number;
+  inquiry_chats: number;
+  deal_chats: number;
   bids_placed: number;
-  revenue?: number;
+  banned_users: number;
+  trends?: {
+    users_today?: number;
+    users_yesterday?: number;
+    listings_today?: number;
+    listings_yesterday?: number;
+    bids_today?: number;
+    bids_yesterday?: number;
+  };
 }
 
 const EMPTY_STATS: DashboardStats = {
@@ -34,7 +50,10 @@ const EMPTY_STATS: DashboardStats = {
   active_listings: 0,
   completed_listings: 0,
   active_chats: 0,
+  inquiry_chats: 0,
+  deal_chats: 0,
   bids_placed: 0,
+  banned_users: 0,
 };
 
 const statCards = [
@@ -54,7 +73,7 @@ const statCards = [
   },
   {
     key: "listings_created" as const,
-    label: "Listings Created",
+    label: "Total Listings",
     icon: Package,
     color: "text-purple-600",
     bg: "bg-purple-50",
@@ -74,6 +93,13 @@ const statCards = [
     bg: "bg-emerald-50",
   },
   {
+    key: "bids_placed" as const,
+    label: "Total Bids",
+    icon: Gavel,
+    color: "text-rose-600",
+    bg: "bg-rose-50",
+  },
+  {
     key: "active_chats" as const,
     label: "Active Chats",
     icon: MessageCircle,
@@ -81,20 +107,78 @@ const statCards = [
     bg: "bg-amber-50",
   },
   {
-    key: "bids_placed" as const,
-    label: "Bids Placed",
-    icon: Gavel,
-    color: "text-rose-600",
-    bg: "bg-rose-50",
+    key: "inquiry_chats" as const,
+    label: "Inquiry Chats",
+    icon: MessageSquare,
+    color: "text-sky-600",
+    bg: "bg-sky-50",
   },
   {
-    key: "revenue" as const,
-    label: "Revenue",
-    icon: TrendingUp,
+    key: "deal_chats" as const,
+    label: "Deal Chats",
+    icon: Handshake,
     color: "text-teal-600",
     bg: "bg-teal-50",
   },
+  {
+    key: "banned_users" as const,
+    label: "Banned Users",
+    icon: ShieldBan,
+    color: "text-red-600",
+    bg: "bg-red-50",
+  },
 ];
+
+function TrendBadge({ current, previous }: { current?: number; previous?: number }) {
+  if (current == null || previous == null) return null;
+  const diff = current - previous;
+  if (diff === 0) {
+    return (
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+        <Minus size={10} /> 0%
+      </span>
+    );
+  }
+  const pct = previous === 0 ? 100 : Math.round((diff / previous) * 100);
+  const isUp = diff > 0;
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+        isUp ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+      }`}
+    >
+      {isUp ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+      {isUp ? "+" : ""}
+      {pct}%
+    </span>
+  );
+}
+
+/** Simple bar chart rendered with plain divs */
+function MiniBarChart({ data, label }: { data: { day: string; value: number }[]; label: string }) {
+  const max = Math.max(...data.map((d) => d.value), 1);
+  const summary = data.map((d) => `${d.day}: ${d.value}`).join(", ");
+  return (
+    <div className="rounded-2xl bg-white border border-gray-100 p-5 shadow-sm" role="figure" aria-label={`${label} — ${summary}`}>
+      <p className="mb-3 text-sm font-semibold text-gray-700">{label}</p>
+      <div className="flex items-end gap-1.5 h-28">
+        {data.map((d) => {
+          const h = Math.max((d.value / max) * 100, 4);
+          return (
+            <div key={d.day} className="flex flex-1 flex-col items-center gap-1">
+              <span className="text-[10px] font-medium text-gray-500">{d.value}</span>
+              <div
+                className="w-full rounded-t-md bg-indigo-400 transition-all"
+                style={{ height: `${h}%` }}
+              />
+              <span className="text-[9px] text-gray-400">{d.day}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
@@ -131,8 +215,28 @@ export default function AdminDashboardPage() {
     fetchStats();
   }, [fetchStats]);
 
+  /* Build trend comparison from the trends object */
+  const trendCharts = useMemo(() => {
+    const t = stats.trends;
+    if (!t) return null;
+    return {
+      users: [
+        { day: "Yesterday", value: t.users_yesterday ?? 0 },
+        { day: "Today", value: t.users_today ?? 0 },
+      ],
+      listings: [
+        { day: "Yesterday", value: t.listings_yesterday ?? 0 },
+        { day: "Today", value: t.listings_today ?? 0 },
+      ],
+      bids: [
+        { day: "Yesterday", value: t.bids_yesterday ?? 0 },
+        { day: "Today", value: t.bids_today ?? 0 },
+      ],
+    };
+  }, [stats.trends]);
+
   return (
-    <div className="p-4 lg:p-8">
+    <div className="p-4 lg:p-8 max-w-[1400px]">
       {/* Header */}
       <div className="mb-6 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between lg:mb-8">
         <div>
@@ -167,16 +271,30 @@ export default function AdminDashboardPage() {
       )}
 
       {/* Stats grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5 lg:gap-5">
         {statCards.map((card) => {
           const value = stats[card.key];
+          const trends = stats.trends;
+          let trendCurrent: number | undefined;
+          let trendPrevious: number | undefined;
+          if (trends && card.key === "total_users") {
+            trendCurrent = trends.users_today;
+            trendPrevious = trends.users_yesterday;
+          } else if (trends && card.key === "listings_created") {
+            trendCurrent = trends.listings_today;
+            trendPrevious = trends.listings_yesterday;
+          } else if (trends && card.key === "bids_placed") {
+            trendCurrent = trends.bids_today;
+            trendPrevious = trends.bids_yesterday;
+          }
+
           return (
             <div
               key={card.key}
               className="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm border border-gray-100 transition-shadow hover:shadow-md"
             >
               <div
-                className={`flex h-12 w-12 items-center justify-center rounded-xl ${card.bg}`}
+                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${card.bg}`}
               >
                 <card.icon size={22} className={card.color} />
               </div>
@@ -184,28 +302,38 @@ export default function AdminDashboardPage() {
                 <p className="text-xs font-medium text-gray-500 truncate">
                   {card.label}
                 </p>
-                <p className="text-xl font-bold text-gray-900">
-                  {loading ? (
-                    <span className="inline-block h-5 w-16 animate-pulse rounded bg-gray-100" />
-                  ) : card.key === "revenue" ? (
-                    `$${(value ?? 0).toLocaleString()}`
-                  ) : (
-                    (value ?? 0).toLocaleString()
-                  )}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xl font-bold text-gray-900">
+                    {loading ? (
+                      <span className="inline-block h-5 w-16 animate-pulse rounded bg-gray-100" />
+                    ) : (
+                      (value ?? 0).toLocaleString()
+                    )}
+                  </p>
+                  {!loading && <TrendBadge current={trendCurrent} previous={trendPrevious} />}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
 
+      {/* Trend charts */}
+      {trendCharts && (
+        <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+          <MiniBarChart data={trendCharts.users} label="New Users (Today vs Yesterday)" />
+          <MiniBarChart data={trendCharts.listings} label="Listings Created (Today vs Yesterday)" />
+          <MiniBarChart data={trendCharts.bids} label="Bids Placed (Today vs Yesterday)" />
+        </div>
+      )}
+
       {/* Quick actions */}
       <div className="mt-8 lg:mt-10">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">
           Quick Actions
         </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <a
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Link
             href="/admin/users"
             className="flex items-center gap-3 rounded-xl bg-white border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow"
           >
@@ -218,8 +346,8 @@ export default function AdminDashboardPage() {
                 View, ban, or delete user accounts
               </p>
             </div>
-          </a>
-          <a
+          </Link>
+          <Link
             href="/admin/listings"
             className="flex items-center gap-3 rounded-xl bg-white border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow"
           >
@@ -232,14 +360,24 @@ export default function AdminDashboardPage() {
                 Review, moderate, and delete listings
               </p>
             </div>
-          </a>
-          <a
-            href="/admin"
-            onClick={async (e) => {
-              e.preventDefault();
-              await fetchStats();
-            }}
+          </Link>
+          <Link
+            href="/admin/chats"
             className="flex items-center gap-3 rounded-xl bg-white border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow"
+          >
+            <MessageCircle className="h-5 w-5 text-amber-600" />
+            <div>
+              <p className="text-sm font-semibold text-gray-900">
+                Chat Activity
+              </p>
+              <p className="text-xs text-gray-500">
+                View chat counts and recent conversations
+              </p>
+            </div>
+          </Link>
+          <button
+            onClick={fetchStats}
+            className="flex items-center gap-3 rounded-xl bg-white border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow text-left"
           >
             <RefreshCw className="h-5 w-5 text-teal-600" />
             <div>
@@ -250,7 +388,7 @@ export default function AdminDashboardPage() {
                 Reload analytics from backend
               </p>
             </div>
-          </a>
+          </button>
         </div>
       </div>
     </div>

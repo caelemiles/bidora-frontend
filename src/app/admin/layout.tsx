@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Users,
   Package,
+  MessageCircle,
   LogOut,
   ShieldCheck,
   Menu,
@@ -17,6 +18,7 @@ const adminNav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/listings", label: "Listings", icon: Package },
+  { href: "/admin/chats", label: "Chats", icon: MessageCircle },
 ];
 
 function subscribeToStorage(callback: () => void) {

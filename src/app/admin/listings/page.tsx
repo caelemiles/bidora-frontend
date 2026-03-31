@@ -19,6 +19,8 @@ interface AdminListing {
   title: string;
   description?: string;
   price?: number;
+  current_bid?: number;
+  category?: string;
   image_url?: string;
   status: string;
   seller_name?: string;
@@ -133,12 +135,14 @@ export default function AdminListingsPage() {
   const statusColors: Record<string, string> = {
     active: "bg-green-50 text-green-600",
     completed: "bg-blue-50 text-blue-600",
+    awaiting_confirmation: "bg-amber-50 text-amber-600",
     expired: "bg-gray-100 text-gray-500",
     cancelled: "bg-red-50 text-red-600",
+    failed: "bg-red-50 text-red-500",
   };
 
   return (
-    <div className="p-4 lg:p-8">
+    <div className="p-4 lg:p-8 max-w-[1400px]">
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:mb-8">
         <div>
@@ -189,8 +193,9 @@ export default function AdminListingsPage() {
           <option value="">All statuses</option>
           <option value="active">Active</option>
           <option value="completed">Completed</option>
+          <option value="awaiting_confirmation">Awaiting Confirmation</option>
           <option value="expired">Expired</option>
-          <option value="cancelled">Cancelled</option>
+          <option value="cancelled">Cancelled / Failed</option>
         </select>
       </div>
 
@@ -216,6 +221,12 @@ export default function AdminListingsPage() {
               <th className="px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">
                 Price
               </th>
+              <th className="px-4 py-3 font-semibold text-gray-600 hidden xl:table-cell">
+                Current Bid
+              </th>
+              <th className="px-4 py-3 font-semibold text-gray-600 hidden xl:table-cell">
+                Category
+              </th>
               <th className="px-4 py-3 font-semibold text-gray-600">Status</th>
               <th className="px-4 py-3 font-semibold text-gray-600 hidden lg:table-cell">
                 Created
@@ -238,6 +249,12 @@ export default function AdminListingsPage() {
                   <td className="px-4 py-3 hidden md:table-cell">
                     <div className="h-4 w-16 animate-pulse rounded bg-gray-100" />
                   </td>
+                  <td className="px-4 py-3 hidden xl:table-cell">
+                    <div className="h-4 w-16 animate-pulse rounded bg-gray-100" />
+                  </td>
+                  <td className="px-4 py-3 hidden xl:table-cell">
+                    <div className="h-4 w-20 animate-pulse rounded bg-gray-100" />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="h-4 w-16 animate-pulse rounded bg-gray-100" />
                   </td>
@@ -252,7 +269,7 @@ export default function AdminListingsPage() {
             ) : listings.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={8}
                   className="px-4 py-10 text-center text-gray-400"
                 >
                   {search || statusFilter
@@ -287,6 +304,12 @@ export default function AdminListingsPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-600 hidden md:table-cell">
                     {listing.price != null ? `$${listing.price.toFixed(2)}` : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 hidden xl:table-cell">
+                    {listing.current_bid != null ? `$${listing.current_bid.toFixed(2)}` : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 hidden xl:table-cell capitalize">
+                    {listing.category || "—"}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -395,12 +418,20 @@ export default function AdminListingsPage() {
                   </p>
                 </div>
               )}
-              <div className="flex gap-6">
+              <div className="flex gap-6 flex-wrap">
                 <div>
                   <p className="text-xs font-medium text-gray-400">Price</p>
                   <p className="text-sm font-semibold text-gray-900">
                     {modal.listing.price != null
                       ? `$${modal.listing.price.toFixed(2)}`
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-400">Current Bid</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {modal.listing.current_bid != null
+                      ? `$${modal.listing.current_bid.toFixed(2)}`
                       : "—"}
                   </p>
                 </div>
@@ -415,6 +446,14 @@ export default function AdminListingsPage() {
                     <p className="text-xs font-medium text-gray-400">Bids</p>
                     <p className="text-sm font-semibold text-gray-900">
                       {modal.listing.bid_count}
+                    </p>
+                  </div>
+                )}
+                {modal.listing.category && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-400">Category</p>
+                    <p className="text-sm font-medium capitalize text-gray-900">
+                      {modal.listing.category}
                     </p>
                   </div>
                 )}
