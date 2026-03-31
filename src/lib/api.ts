@@ -27,9 +27,16 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    const errMsg = body.message || body.error || res.statusText;
-    console.error(`[API] ${method} ${url} → ${res.status}: ${errMsg}`);
-    throw new Error(errMsg);
+    console.error(`[API] ${method} ${url} → ${res.status} ${res.statusText}`);
+    console.error(`[API]   Response body:`, JSON.stringify(body, null, 2));
+    const detail =
+      body.message ||
+      body.error ||
+      body.detail ||
+      (Array.isArray(body.errors) ? body.errors.map((e: { msg?: string }) => e.msg ?? String(e)).join("; ") : null) ||
+      res.statusText ||
+      "Unknown error";
+    throw new Error(`${res.status}: ${detail}`);
   }
   return res.json();
 }
@@ -59,9 +66,16 @@ async function uploadRequest<T>(path: string, body: FormData): Promise<T> {
 
   if (!res.ok) {
     const resBody = await res.json().catch(() => ({}));
-    const errMsg = resBody.message || resBody.error || res.statusText;
-    console.error(`[API] POST (upload) ${url} → ${res.status}: ${errMsg}`);
-    throw new Error(errMsg);
+    console.error(`[API] POST (upload) ${url} → ${res.status} ${res.statusText}`);
+    console.error(`[API]   Response body:`, JSON.stringify(resBody, null, 2));
+    const detail =
+      resBody.message ||
+      resBody.error ||
+      resBody.detail ||
+      (Array.isArray(resBody.errors) ? resBody.errors.map((e: { msg?: string }) => e.msg ?? String(e)).join("; ") : null) ||
+      res.statusText ||
+      "Unknown error";
+    throw new Error(`${res.status}: ${detail}`);
   }
   return res.json();
 }
