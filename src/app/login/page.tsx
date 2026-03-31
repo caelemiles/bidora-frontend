@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
-import { api } from "@/lib/api";
+import { checkOnboardingComplete } from "@/lib/auth-routing";
 
 async function firebaseLogin(email: string, password: string) {
   const { signInWithEmailAndPassword } = await import("firebase/auth");
@@ -19,35 +19,6 @@ async function firebaseGoogleLogin() {
   return signInWithPopup(auth, new GoogleAuthProvider());
 }
 
-/**
- * Check whether the current user has a completed onboarding profile.
- * Returns true if profile exists and onboarding_completed is true.
- */
-async function checkOnboardingComplete(): Promise<boolean> {
-  try {
-    console.log("[Login] Checking onboarding status via GET /api/profiles/me …");
-    const profile = await api.get<{ onboarding_completed?: boolean }>(
-      "/api/profiles/me",
-    );
-    const completed = profile.onboarding_completed === true;
-    console.log(
-      `[Login] Profile found. onboarding_completed = ${completed}`,
-    );
-    return completed;
-  } catch (err: unknown) {
-    // 404 means no profile exists yet → onboarding not done
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.startsWith("404")) {
-      console.log("[Login] No profile found (404) → onboarding required.");
-      return false;
-    }
-    // For other errors, log and default to onboarding so the user doesn't
-    // land in a broken main-app state.
-    console.warn("[Login] Could not verify onboarding status:", msg);
-    return false;
-  }
-}
-
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -58,7 +29,7 @@ export default function LoginPage() {
 
   /** Route the user based on their onboarding state, not auth alone. */
   async function routeAfterAuth() {
-    const onboarded = await checkOnboardingComplete();
+    const onboarded = await checkOnboardingComplete("Login");
     if (onboarded) {
       console.log("[Login] ✅ Onboarding complete → navigating to /listings");
       router.push("/listings");
