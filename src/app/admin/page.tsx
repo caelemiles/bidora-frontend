@@ -157,8 +157,9 @@ function TrendBadge({ current, previous }: { current?: number; previous?: number
 /** Simple bar chart rendered with plain divs */
 function MiniBarChart({ data, label }: { data: { day: string; value: number }[]; label: string }) {
   const max = Math.max(...data.map((d) => d.value), 1);
+  const summary = data.map((d) => `${d.day}: ${d.value}`).join(", ");
   return (
-    <div className="rounded-2xl bg-white border border-gray-100 p-5 shadow-sm">
+    <div className="rounded-2xl bg-white border border-gray-100 p-5 shadow-sm" role="figure" aria-label={`${label} — ${summary}`}>
       <p className="mb-3 text-sm font-semibold text-gray-700">{label}</p>
       <div className="flex items-end gap-1.5 h-28">
         {data.map((d) => {
@@ -214,22 +215,23 @@ export default function AdminDashboardPage() {
     fetchStats();
   }, [fetchStats]);
 
-  /* Build trend chart placeholder data from the trends object */
+  /* Build trend comparison from the trends object */
   const trendCharts = useMemo(() => {
     const t = stats.trends;
     if (!t) return null;
-    const days = ["6d", "5d", "4d", "3d", "2d", "Yest", "Today"];
-    /* Only today/yesterday are provided by the API; others shown as zero */
-    function series(today?: number, yesterday?: number) {
-      return days.map((day, i) => ({
-        day,
-        value: i === days.length - 1 ? (today ?? 0) : i === days.length - 2 ? (yesterday ?? 0) : 0,
-      }));
-    }
     return {
-      users: series(t.users_today, t.users_yesterday),
-      listings: series(t.listings_today, t.listings_yesterday),
-      bids: series(t.bids_today, t.bids_yesterday),
+      users: [
+        { day: "Yesterday", value: t.users_yesterday ?? 0 },
+        { day: "Today", value: t.users_today ?? 0 },
+      ],
+      listings: [
+        { day: "Yesterday", value: t.listings_yesterday ?? 0 },
+        { day: "Today", value: t.listings_today ?? 0 },
+      ],
+      bids: [
+        { day: "Yesterday", value: t.bids_yesterday ?? 0 },
+        { day: "Today", value: t.bids_today ?? 0 },
+      ],
     };
   }, [stats.trends]);
 
@@ -319,9 +321,9 @@ export default function AdminDashboardPage() {
       {/* Trend charts */}
       {trendCharts && (
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
-          <MiniBarChart data={trendCharts.users} label="New Users (Last 7 Days)" />
-          <MiniBarChart data={trendCharts.listings} label="Listings Created (Last 7 Days)" />
-          <MiniBarChart data={trendCharts.bids} label="Bids Placed (Last 7 Days)" />
+          <MiniBarChart data={trendCharts.users} label="New Users (Today vs Yesterday)" />
+          <MiniBarChart data={trendCharts.listings} label="Listings Created (Today vs Yesterday)" />
+          <MiniBarChart data={trendCharts.bids} label="Bids Placed (Today vs Yesterday)" />
         </div>
       )}
 
