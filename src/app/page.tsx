@@ -27,9 +27,9 @@ export default function WelcomePage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 py-12 font-sans">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 py-12 font-sans lg:px-8">
       {/* Desktop: constrained centered panel */}
-      <div className="flex w-full max-w-sm flex-col items-center gap-10 lg:max-w-lg lg:gap-14">
+      <div className="flex w-full max-w-sm flex-col items-center gap-10 lg:max-w-md lg:gap-14">
         {/* Hero */}
         <div className="flex flex-col items-center gap-4 text-center lg:gap-6">
           {/* Logo */}

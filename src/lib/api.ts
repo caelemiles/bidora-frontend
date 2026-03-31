@@ -3,7 +3,12 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`;
+  const method = options?.method || "GET";
+
+  console.log(`[API] ${method} ${url}`);
+
+  const res = await fetch(url, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -13,7 +18,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || res.statusText);
+    const errMsg = body.message || body.error || res.statusText;
+    console.error(`[API] ${method} ${url} → ${res.status}: ${errMsg}`);
+    throw new Error(errMsg);
   }
   return res.json();
 }
@@ -21,7 +28,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 async function uploadRequest<T>(path: string, body: FormData): Promise<T> {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`;
+
+  console.log(`[API] POST (upload) ${url}`);
+  console.log(`[API]   Content-Type: multipart/form-data (FormData)`);
+
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -30,7 +42,9 @@ async function uploadRequest<T>(path: string, body: FormData): Promise<T> {
   });
   if (!res.ok) {
     const resBody = await res.json().catch(() => ({}));
-    throw new Error(resBody.message || res.statusText);
+    const errMsg = resBody.message || resBody.error || res.statusText;
+    console.error(`[API] POST (upload) ${url} → ${res.status}: ${errMsg}`);
+    throw new Error(errMsg);
   }
   return res.json();
 }

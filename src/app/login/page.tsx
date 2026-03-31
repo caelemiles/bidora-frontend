@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
 
 async function firebaseLogin(email: string, password: string) {
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -60,14 +62,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-between bg-white px-6 py-12 font-sans lg:justify-center lg:gap-8">
-      <div className="lg:hidden" />
-
+    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 py-12 font-sans lg:px-8">
       <div className="w-full max-w-sm lg:max-w-md">
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-900 lg:text-3xl">Welcome back</h1>
+          <p className="mt-1 text-sm text-gray-500 lg:text-base">
             Log in to your Bidora account
           </p>
         </div>
@@ -75,7 +75,7 @@ export default function LoginPage() {
         {/* Form Card */}
         <form
           onSubmit={handleLogin}
-          className="flex flex-col gap-4 rounded-2xl bg-gray-50 p-6 shadow-sm"
+          className="flex flex-col gap-4 rounded-2xl bg-gray-50 p-6 shadow-sm lg:p-8"
         >
           <input
             type="email"
@@ -85,14 +85,26 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 placeholder-gray-400 outline-none transition-shadow focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)]"
           />
-          <input
-            type="password"
-            placeholder="Password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 placeholder-gray-400 outline-none transition-shadow focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)]"
-          />
+
+          {/* Password field with show/hide toggle */}
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 pr-11 text-sm text-gray-900 placeholder-gray-400 outline-none transition-shadow focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)]"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 transition-colors hover:text-gray-600"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
 
           {error && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-[var(--danger)]">
@@ -157,7 +169,7 @@ export default function LoginPage() {
       </div>
 
       {/* Bottom ad */}
-      <div className="mt-8 w-full max-w-sm">
+      <div className="mt-8 w-full max-w-sm lg:max-w-md">
         <AdBanner />
       </div>
     </div>

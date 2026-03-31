@@ -4,7 +4,6 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { User } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { auth } from "@/lib/firebase";
 import { api } from "@/lib/api";
 
@@ -23,7 +22,7 @@ const CATEGORIES = [
   "Other",
 ] as const;
 
-interface FormData {
+interface OnboardingFormData {
   displayName: string;
   bio: string;
   avatarFile: File | null;
@@ -42,7 +41,7 @@ export default function OnboardingPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<OnboardingFormData>({
     displayName: "",
     bio: "",
     avatarFile: null,
@@ -81,16 +80,6 @@ export default function OnboardingPage() {
     setSubmitting(true);
 
     try {
-      // Pre-flight: check Supabase configuration
-      if (!isSupabaseConfigured) {
-        const msg =
-          "Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.";
-        console.error("[Onboarding] " + msg);
-        setError(msg);
-        setSubmitting(false);
-        return;
-      }
-
       const user = auth.currentUser;
       if (!user) {
         console.error("[Onboarding] No Firebase user logged in.");
@@ -98,38 +87,19 @@ export default function OnboardingPage() {
         setSubmitting(false);
         return;
       }
+
+      // Refresh the Firebase token so the backend gets a valid Bearer token
+      const freshToken = await user.getIdToken(true);
+      localStorage.setItem("token", freshToken);
       console.log("[Onboarding] Firebase user:", user.uid, user.email);
 
-      let avatarUrl = "";
-
-      // Upload avatar via backend if selected
-      if (formData.avatarFile) {
-        console.log("[Onboarding] Uploading avatar via backend...");
-        console.log("[Onboarding]   File size:", formData.avatarFile.size, "bytes");
-        console.log("[Onboarding]   File type:", formData.avatarFile.type);
-
-        try {
-          const uploadData = new FormData();
-          uploadData.append("file", formData.avatarFile);
-          const { url } = await api.upload<{ url: string }>("/api/upload-avatar", uploadData);
-          avatarUrl = url;
-          console.log("[Onboarding] Avatar uploaded. Public URL:", avatarUrl);
-        } catch (uploadErr) {
-          console.error("[Onboarding] Avatar upload error:", uploadErr);
-          const detail = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
-          setError(`Avatar upload failed: ${detail}`);
-          setSubmitting(false);
-          return;
-        }
-      }
-
-      // Save profile to Supabase
-      const profileData = {
+      // ── Step 1: Save basic profile (without avatar) via backend API ──
+      const profilePayload = {
         firebase_uid: user.uid,
         email: user.email || "",
         display_name: formData.displayName.trim(),
         bio: formData.bio.trim(),
-        avatar_url: avatarUrl,
+        avatar_url: "",
         payment_methods: formData.paymentMethods,
         delivery_methods: formData.deliveryMethods,
         delivery_fee: formData.deliveryFee ? parseFloat(formData.deliveryFee) : 0,
@@ -137,29 +107,45 @@ export default function OnboardingPage() {
         onboarding_completed: true,
       };
 
-      console.log("[Onboarding] Saving profile to Supabase 'profiles' table...");
-      console.log("[Onboarding]   Payload:", JSON.stringify(profileData, null, 2));
+      console.log("[Onboarding] Step 1 — Saving profile via backend API...");
+      console.log("[Onboarding]   Endpoint: POST /api/profile");
+      console.log("[Onboarding]   Payload:", JSON.stringify(profilePayload, null, 2));
 
       try {
-        const { error: insertError } = await supabase
-          .from("profiles")
-          .upsert(profileData, { onConflict: "firebase_uid" });
-
-        if (insertError) {
-          console.error("[Onboarding] Profile save error:", JSON.stringify(insertError, null, 2));
-          setError(`Failed to save profile: ${insertError.message} (code: ${insertError.code || "unknown"})`);
-          setSubmitting(false);
-          return;
-        }
+        await api.post("/api/profile", profilePayload);
+        console.log("[Onboarding] Profile saved successfully.");
       } catch (saveErr) {
-        console.error("[Onboarding] Profile save network error:", saveErr);
+        console.error("[Onboarding] Profile save failed:", saveErr);
         const detail = saveErr instanceof Error ? saveErr.message : String(saveErr);
-        setError(`Failed to save profile (network error): ${detail}. Check that Supabase is configured and the "profiles" table exists.`);
+        setError(`Failed to save profile: ${detail}`);
         setSubmitting(false);
         return;
       }
 
-      console.log("[Onboarding] Profile saved successfully! Redirecting to /listings...");
+      // ── Step 2: Optional avatar upload via backend API ──
+      if (formData.avatarFile) {
+        console.log("[Onboarding] Step 2 — Uploading avatar via backend API...");
+        console.log("[Onboarding]   Endpoint: POST /api/upload-avatar");
+        console.log("[Onboarding]   File name:", formData.avatarFile.name);
+        console.log("[Onboarding]   File size:", formData.avatarFile.size, "bytes");
+        console.log("[Onboarding]   File type:", formData.avatarFile.type);
+
+        try {
+          const uploadData = new FormData();
+          uploadData.append("file", formData.avatarFile);
+          const { url } = await api.upload<{ url: string }>("/api/upload-avatar", uploadData);
+          console.log("[Onboarding] Avatar uploaded. Public URL:", url);
+        } catch (uploadErr) {
+          // Avatar upload failure is non-blocking — profile is already saved
+          console.error("[Onboarding] Avatar upload failed (non-blocking):", uploadErr);
+          const detail = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
+          console.warn(`[Onboarding] Continuing without avatar. Error: ${detail}`);
+        }
+      } else {
+        console.log("[Onboarding] Step 2 — No avatar selected, skipping upload.");
+      }
+
+      console.log("[Onboarding] Onboarding complete! Redirecting to /listings...");
       router.push("/listings");
     } catch (err) {
       console.error("[Onboarding] Unexpected error:", err);
