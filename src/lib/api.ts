@@ -7,15 +7,24 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const method = options?.method || "GET";
 
   console.log(`[API] ${method} ${url}`);
+  console.log(`[API]   Base URL: ${API_BASE}`);
+  console.log(`[API]   Auth token present: ${Boolean(token)}`);
 
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options?.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options?.headers,
+      },
+    });
+  } catch (networkErr) {
+    console.error(`[API] ${method} ${url} → Network error (request never reached server):`, networkErr);
+    throw networkErr;
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const errMsg = body.message || body.error || res.statusText;
@@ -31,15 +40,23 @@ async function uploadRequest<T>(path: string, body: FormData): Promise<T> {
   const url = `${API_BASE}${path}`;
 
   console.log(`[API] POST (upload) ${url}`);
-  console.log(`[API]   Content-Type: multipart/form-data (FormData)`);
+  console.log(`[API]   Base URL: ${API_BASE}`);
+  console.log(`[API]   Auth token present: ${Boolean(token)}`);
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body,
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body,
+    });
+  } catch (networkErr) {
+    console.error(`[API] POST (upload) ${url} → Network error:`, networkErr);
+    throw networkErr;
+  }
+
   if (!res.ok) {
     const resBody = await res.json().catch(() => ({}));
     const errMsg = resBody.message || resBody.error || res.statusText;

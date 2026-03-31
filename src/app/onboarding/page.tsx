@@ -75,9 +75,14 @@ export default function OnboardingPage() {
     goTo(step - 1);
   }
 
+  const [avatarError, setAvatarError] = useState("");
+
   async function handleFinish() {
     setError("");
+    setAvatarError("");
     setSubmitting(true);
+
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
     try {
       const user = auth.currentUser;
@@ -89,9 +94,21 @@ export default function OnboardingPage() {
       }
 
       // Refresh the Firebase token so the backend gets a valid Bearer token
-      const freshToken = await user.getIdToken(true);
-      localStorage.setItem("token", freshToken);
+      let freshToken: string;
+      try {
+        freshToken = await user.getIdToken(true);
+        localStorage.setItem("token", freshToken);
+      } catch (tokenErr) {
+        console.error("[Onboarding] Failed to refresh Firebase token:", tokenErr);
+        const detail = tokenErr instanceof Error ? tokenErr.message : String(tokenErr);
+        setError(`Authentication error — could not refresh token: ${detail}`);
+        setSubmitting(false);
+        return;
+      }
+
       console.log("[Onboarding] Firebase user:", user.uid, user.email);
+      console.log("[Onboarding] API base URL:", API_BASE);
+      console.log("[Onboarding] Token present:", Boolean(freshToken));
 
       // ── Step 1: Save basic profile (without avatar) via backend API ──
       const profilePayload = {
@@ -107,25 +124,36 @@ export default function OnboardingPage() {
         onboarding_completed: true,
       };
 
+      const profileUrl = `${API_BASE}/api/profile`;
       console.log("[Onboarding] Step 1 — Saving profile via backend API...");
-      console.log("[Onboarding]   Endpoint: POST /api/profile");
+      console.log("[Onboarding]   URL:", profileUrl);
+      console.log("[Onboarding]   Method: POST");
+      console.log("[Onboarding]   Headers: Content-Type: application/json, Authorization: Bearer <token>");
       console.log("[Onboarding]   Payload:", JSON.stringify(profilePayload, null, 2));
 
       try {
-        await api.post("/api/profile", profilePayload);
-        console.log("[Onboarding] Profile saved successfully.");
+        const profileResult = await api.post("/api/profile", profilePayload);
+        console.log("[Onboarding] ✅ Profile saved successfully. Response:", JSON.stringify(profileResult));
       } catch (saveErr) {
-        console.error("[Onboarding] Profile save failed:", saveErr);
+        console.error("[Onboarding] ❌ Profile save FAILED:", saveErr);
         const detail = saveErr instanceof Error ? saveErr.message : String(saveErr);
-        setError(`Failed to save profile: ${detail}`);
+        const isNetworkError = detail === "Failed to fetch" || detail.includes("NetworkError") || detail.includes("ERR_CONNECTION");
+        if (isNetworkError) {
+          console.error(`[Onboarding] Network error — backend at ${profileUrl} may be unreachable.`);
+          setError(`Cannot reach backend at ${API_BASE}. Ensure the backend server is running and NEXT_PUBLIC_API_URL is set correctly. (${detail})`);
+        } else {
+          setError(`Profile save failed: ${detail}`);
+        }
         setSubmitting(false);
         return;
       }
 
       // ── Step 2: Optional avatar upload via backend API ──
       if (formData.avatarFile) {
+        const avatarUrl = `${API_BASE}/api/upload-avatar`;
         console.log("[Onboarding] Step 2 — Uploading avatar via backend API...");
-        console.log("[Onboarding]   Endpoint: POST /api/upload-avatar");
+        console.log("[Onboarding]   URL:", avatarUrl);
+        console.log("[Onboarding]   Method: POST (multipart/form-data)");
         console.log("[Onboarding]   File name:", formData.avatarFile.name);
         console.log("[Onboarding]   File size:", formData.avatarFile.size, "bytes");
         console.log("[Onboarding]   File type:", formData.avatarFile.type);
@@ -134,18 +162,19 @@ export default function OnboardingPage() {
           const uploadData = new FormData();
           uploadData.append("file", formData.avatarFile);
           const { url } = await api.upload<{ url: string }>("/api/upload-avatar", uploadData);
-          console.log("[Onboarding] Avatar uploaded. Public URL:", url);
+          console.log("[Onboarding] ✅ Avatar uploaded. Public URL:", url);
         } catch (uploadErr) {
           // Avatar upload failure is non-blocking — profile is already saved
-          console.error("[Onboarding] Avatar upload failed (non-blocking):", uploadErr);
+          console.error("[Onboarding] ⚠️ Avatar upload failed (non-blocking):", uploadErr);
           const detail = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
           console.warn(`[Onboarding] Continuing without avatar. Error: ${detail}`);
+          setAvatarError(`Avatar upload failed: ${detail}. Your profile was saved without a photo.`);
         }
       } else {
         console.log("[Onboarding] Step 2 — No avatar selected, skipping upload.");
       }
 
-      console.log("[Onboarding] Onboarding complete! Redirecting to /listings...");
+      console.log("[Onboarding] ✅ Onboarding complete! Redirecting to /listings...");
       router.push("/listings");
     } catch (err) {
       console.error("[Onboarding] Unexpected error:", err);
@@ -275,10 +304,15 @@ export default function OnboardingPage() {
             )}
           </div>
 
-          {/* Submission error — visible on any step */}
+          {/* Submission error — visible on final step */}
           {error && step === TOTAL_STEPS && (
             <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-[var(--danger)]">
               {error}
+            </p>
+          )}
+          {avatarError && step === TOTAL_STEPS && (
+            <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+              {avatarError}
             </p>
           )}
         </div>
