@@ -461,7 +461,7 @@ export default function AdminListingsPage() {
               </button>
             </div>
             <p className="mb-2 text-sm font-medium text-gray-700">
-              &ldquo;{modal.listing.title}&rdquo;
+              &quot;{modal.listing.title}&quot;
             </p>
             <p className="mb-6 text-sm text-gray-600">
               This will permanently remove this listing and all associated bids.

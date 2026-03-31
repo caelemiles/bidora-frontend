@@ -146,7 +146,7 @@ export default function AdminUsersPage() {
     },
     unban: {
       title: "Unban User",
-      desc: "This will restore the user\u2019s access to Bidora.",
+      desc: "This will restore the user's access to Bidora.",
       confirm: "Unban User",
       color: "bg-green-600 hover:bg-green-700",
     },

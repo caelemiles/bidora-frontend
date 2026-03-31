@@ -109,7 +109,6 @@ export default function OnboardingPage() {
       console.log("[Onboarding] Firebase user:", user.uid, user.email);
       console.log("[Onboarding] API base URL:", API_BASE);
       console.log("[Onboarding] Token present:", Boolean(freshToken));
-      console.log("[Onboarding] Token (first 20 chars):", freshToken.substring(0, 20) + "…");
 
       // ── Step 1: Save basic profile (without avatar) via backend API ──
       const profilePayload = {
