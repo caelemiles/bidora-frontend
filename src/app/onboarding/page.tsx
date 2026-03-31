@@ -142,7 +142,7 @@ export default function OnboardingPage() {
           console.error(`[Onboarding] Network error — backend at ${profileUrl} may be unreachable.`);
           setError(`Cannot reach backend at ${API_BASE}. Ensure the backend server is running and NEXT_PUBLIC_API_URL is set correctly. (${detail})`);
         } else {
-          setError(`Profile save failed: ${detail}`);
+          setError(`Profile save failed (POST ${profileUrl}): ${detail}`);
         }
         setSubmitting(false);
         return;
@@ -168,7 +168,7 @@ export default function OnboardingPage() {
           console.error("[Onboarding] ⚠️ Avatar upload failed (non-blocking):", uploadErr);
           const detail = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
           console.warn(`[Onboarding] Continuing without avatar. Error: ${detail}`);
-          setAvatarError(`Avatar upload failed: ${detail}. Your profile was saved without a photo.`);
+          setAvatarError(`Avatar upload failed (POST ${avatarUrl}): ${detail}. Your profile was saved without a photo.`);
         }
       } else {
         console.log("[Onboarding] Step 2 — No avatar selected, skipping upload.");
