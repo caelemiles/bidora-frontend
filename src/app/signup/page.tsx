@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
+import { api } from "@/lib/api";
 
 async function firebaseSignup(email: string, password: string) {
   const { createUserWithEmailAndPassword } = await import("firebase/auth");
@@ -16,6 +17,32 @@ async function firebaseGoogleSignup() {
   const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
   const { auth } = await import("@/lib/firebase");
   return signInWithPopup(auth, new GoogleAuthProvider());
+}
+
+/**
+ * Check whether the current user has a completed onboarding profile.
+ * Returns true if profile exists and onboarding_completed is true.
+ */
+async function checkOnboardingComplete(): Promise<boolean> {
+  try {
+    console.log("[Signup] Checking onboarding status via GET /api/profiles/me …");
+    const profile = await api.get<{ onboarding_completed?: boolean }>(
+      "/api/profiles/me",
+    );
+    const completed = profile.onboarding_completed === true;
+    console.log(
+      `[Signup] Profile found. onboarding_completed = ${completed}`,
+    );
+    return completed;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.startsWith("404")) {
+      console.log("[Signup] No profile found (404) → onboarding required.");
+      return false;
+    }
+    console.warn("[Signup] Could not verify onboarding status:", msg);
+    return false;
+  }
 }
 
 export default function SignupPage() {
@@ -42,6 +69,7 @@ export default function SignupPage() {
       const cred = await firebaseSignup(email, password);
       const token = await cred.user.getIdToken();
       localStorage.setItem("token", token);
+      console.log("[Signup] New user created → navigating to /onboarding");
       router.push("/onboarding");
     } catch (err: unknown) {
       const msg =
@@ -61,7 +89,17 @@ export default function SignupPage() {
       const cred = await firebaseGoogleSignup();
       const token = await cred.user.getIdToken();
       localStorage.setItem("token", token);
-      router.push("/onboarding");
+      console.log("[Signup] Google sign-up successful. Checking onboarding state…");
+
+      // Google users may already have a completed profile (returning user).
+      const onboarded = await checkOnboardingComplete();
+      if (onboarded) {
+        console.log("[Signup] ✅ Onboarding already complete → navigating to /listings");
+        router.push("/listings");
+      } else {
+        console.log("[Signup] ⚠️ Onboarding incomplete → navigating to /onboarding");
+        router.push("/onboarding");
+      }
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Google sign-up failed.";
