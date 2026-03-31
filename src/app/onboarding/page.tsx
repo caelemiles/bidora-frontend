@@ -124,7 +124,7 @@ export default function OnboardingPage() {
         onboarding_completed: true,
       };
 
-      const profileUrl = `${API_BASE}/api/profile`;
+      const profileUrl = `${API_BASE}/api/profiles`;
       console.log("[Onboarding] Step 1 — Saving profile via backend API...");
       console.log("[Onboarding]   URL:", profileUrl);
       console.log("[Onboarding]   Method: POST");
@@ -132,7 +132,7 @@ export default function OnboardingPage() {
       console.log("[Onboarding]   Payload:", JSON.stringify(profilePayload, null, 2));
 
       try {
-        const profileResult = await api.post("/api/profile", profilePayload);
+        const profileResult = await api.post("/api/profiles", profilePayload);
         console.log("[Onboarding] ✅ Profile saved successfully. Response:", JSON.stringify(profileResult));
       } catch (saveErr) {
         console.error("[Onboarding] ❌ Profile save FAILED:", saveErr);
@@ -142,7 +142,7 @@ export default function OnboardingPage() {
           console.error(`[Onboarding] Network error — backend at ${profileUrl} may be unreachable.`);
           setError(`Cannot reach backend at ${API_BASE}. Ensure the backend server is running and NEXT_PUBLIC_API_URL is set correctly. (${detail})`);
         } else {
-          setError(`Profile save failed (POST ${profileUrl}): ${detail}`);
+          setError(`POST ${profileUrl} → ${detail}`);
         }
         setSubmitting(false);
         return;
