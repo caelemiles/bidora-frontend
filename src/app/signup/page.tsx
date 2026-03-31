@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
+import { checkOnboardingComplete } from "@/lib/auth-routing";
 
 async function firebaseSignup(email: string, password: string) {
   const { createUserWithEmailAndPassword } = await import("firebase/auth");
@@ -42,6 +43,7 @@ export default function SignupPage() {
       const cred = await firebaseSignup(email, password);
       const token = await cred.user.getIdToken();
       localStorage.setItem("token", token);
+      console.log("[Signup] New user created → navigating to /onboarding");
       router.push("/onboarding");
     } catch (err: unknown) {
       const msg =
@@ -61,7 +63,17 @@ export default function SignupPage() {
       const cred = await firebaseGoogleSignup();
       const token = await cred.user.getIdToken();
       localStorage.setItem("token", token);
-      router.push("/onboarding");
+      console.log("[Signup] Google sign-up successful. Checking onboarding state…");
+
+      // Google users may already have a completed profile (returning user).
+      const onboarded = await checkOnboardingComplete("Signup");
+      if (onboarded) {
+        console.log("[Signup] ✅ Onboarding already complete → navigating to /listings");
+        router.push("/listings");
+      } else {
+        console.log("[Signup] ⚠️ Onboarding incomplete → navigating to /onboarding");
+        router.push("/onboarding");
+      }
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Google sign-up failed.";

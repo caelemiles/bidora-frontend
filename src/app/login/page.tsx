@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
+import { checkOnboardingComplete } from "@/lib/auth-routing";
 
 async function firebaseLogin(email: string, password: string) {
   const { signInWithEmailAndPassword } = await import("firebase/auth");
@@ -26,6 +27,18 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  /** Route the user based on their onboarding state, not auth alone. */
+  async function routeAfterAuth() {
+    const onboarded = await checkOnboardingComplete("Login");
+    if (onboarded) {
+      console.log("[Login] ✅ Onboarding complete → navigating to /listings");
+      router.push("/listings");
+    } else {
+      console.log("[Login] ⚠️ Onboarding incomplete → navigating to /onboarding");
+      router.push("/onboarding");
+    }
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -34,7 +47,8 @@ export default function LoginPage() {
       const cred = await firebaseLogin(email, password);
       const token = await cred.user.getIdToken();
       localStorage.setItem("token", token);
-      router.push("/listings");
+      console.log("[Login] Firebase email/password login successful.");
+      await routeAfterAuth();
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Login failed. Please try again.";
@@ -51,7 +65,8 @@ export default function LoginPage() {
       const cred = await firebaseGoogleLogin();
       const token = await cred.user.getIdToken();
       localStorage.setItem("token", token);
-      router.push("/listings");
+      console.log("[Login] Google sign-in successful.");
+      await routeAfterAuth();
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Google sign-in failed.";
