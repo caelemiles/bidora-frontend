@@ -69,11 +69,16 @@ export default function BottomNav() {
 
       {/* Desktop sidebar nav */}
       <nav className="hidden lg:flex fixed left-0 top-0 bottom-0 z-50 w-56 flex-col bg-white border-r border-gray-100 py-6">
-        {/* Logo */}
+        {/* Logo — uses Bidora-logo.png when available */}
         <div className="flex items-center gap-2.5 px-5 mb-8">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--primary)] text-lg font-extrabold text-white shadow">
-            B
-          </span>
+          <img
+            src="/Bidora-logo.png"
+            alt="Bidora"
+            className="h-9 w-9 rounded-xl shadow object-contain"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
           <span className="text-xl font-extrabold tracking-tight text-gray-900">Bidora</span>
         </div>
 

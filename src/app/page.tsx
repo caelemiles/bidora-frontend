@@ -32,11 +32,17 @@ export default function WelcomePage() {
       <div className="flex w-full max-w-sm flex-col items-center gap-10 lg:max-w-md lg:gap-14">
         {/* Hero */}
         <div className="flex flex-col items-center gap-4 text-center lg:gap-6">
-          {/* Logo */}
+          {/* Logo — uses Bidora-logo.png when available */}
           <div className="flex items-center gap-3 lg:gap-4">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary)] text-2xl font-extrabold text-white shadow-lg lg:h-20 lg:w-20 lg:rounded-3xl lg:text-4xl lg:shadow-xl">
-              B
-            </span>
+            <img
+              src="/Bidora-logo.png"
+              alt="Bidora"
+              className="h-14 w-14 shrink-0 rounded-2xl shadow-lg lg:h-20 lg:w-20 lg:rounded-3xl lg:shadow-xl object-contain"
+              onError={(e) => {
+                // Hide broken image if logo file not yet added
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
             <span className="text-4xl font-extrabold tracking-tight text-gray-900 lg:text-5xl">
               Bidora
             </span>
